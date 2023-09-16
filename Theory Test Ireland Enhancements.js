@@ -5,6 +5,9 @@
 // @description  Several enhancements for Theory Test Ireland site, such as autoplay, roll-up top bar for more space and block useless elements
 // @author       Lyushen
 // @match        https://theorytestireland.org/*
+// @updateURL    https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/Theory%20Test%20Ireland%20Enhancements.js
+// @downloadURL  https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/Theory%20Test%20Ireland%20Enhancements.js
+// @icon         https://theorytestireland.org/wp-content/uploads/2020/12/logo-colour.png
 // @grant        none
 // ==/UserScript==
 
