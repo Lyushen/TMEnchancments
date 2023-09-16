@@ -1,15 +1,19 @@
 // ==UserScript==
 // @name         Theory Test Ireland Enhancements
-// @namespace    http://tampermonkey.net/
-// @version      1.004
-// @description  Several enhancements for Theory Test Ireland site, such as autoplay, roll-up top bar for more space and block useless elements
+// @icon         https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/TTI_logo-colour.png
+// @namespace    https://github.com/Lyushen
 // @author       Lyushen
+// @license      MIT
+// @version      1.005
+// @description  Several enhancements for Theory Test Ireland site, such as autoplay, roll-up top bar for more space and block useless elements
 // @match        https://theorytestireland.org/*
+// @homepageURL  https://github.com/Lyushen/TMEnchancments
+// @supportURL   https://github.com/Lyushen/TMEnchancments/issues
 // @updateURL    https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/Theory_Test_Ireland_Enhancements.js
 // @downloadURL  https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/Theory_Test_Ireland_Enhancements.js
-// @icon         https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/TTI_logo-colour.png
-// @grant        none
+// @grant        unsafeWindow
 // ==/UserScript==
+
 
 (function() {
     'use strict';
