@@ -16,7 +16,7 @@ const blockTabletElement = () => {
         tabletElement.style.display = 'none';
     }
 };
-
+ 
 // Call the function to block the tablet element
 blockTabletElement();
     //more space
