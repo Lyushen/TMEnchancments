@@ -3,15 +3,15 @@
 // @icon         https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/TTI_logo-colour.png
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
-// @license      MIT
+// @license      GNU
 // @version      1.005
-// @description  Several enhancements for Theory Test Ireland site, such as autoplay, roll-up top bar for more space and block useless elements
+// @description  Several enhancements for Theory Test Ireland site, such as autoplay audio questions and answers, roll-up top bar for more space and block useless elements
 // @match        https://theorytestireland.org/*
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
 // @updateURL    https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/Theory_Test_Ireland_Enhancements.js
 // @downloadURL  https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/Theory_Test_Ireland_Enhancements.js
-// @grant        unsafeWindow
+// @grant        none
 // ==/UserScript==
 
 
