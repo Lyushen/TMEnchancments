@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Theory Test Ireland Enhancements
 // @namespace    http://tampermonkey.net/
-// @version      1.003
+// @version      1.004
 // @description  Several enhancements for Theory Test Ireland site, such as autoplay, roll-up top bar for more space and block useless elements
 // @author       Lyushen
 // @match        https://theorytestireland.org/*
