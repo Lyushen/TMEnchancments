@@ -100,7 +100,7 @@ if (enemyScript) {
             audioElements[currentIconIndex].addEventListener('ended', function() {
                 if (currentIconIndex < 4) {
                     currentIconIndex++;
-                    setTimeout(clickNextIcon, 0); // 0ms delay between audios
+                    setTimeout(clickNextIcon, -500); // -500ms delay between audios
                 }
             });
         };
