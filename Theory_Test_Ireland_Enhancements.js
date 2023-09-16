@@ -7,7 +7,7 @@
 // @match        https://theorytestireland.org/*
 // @updateURL    https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/Theory_Test_Ireland_Enhancements.js
 // @downloadURL  https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/Theory_Test_Ireland_Enhancements.js
-// @icon         https://theorytestireland.org/wp-content/uploads/2020/12/logo-colour.png
+// @icon         https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/TTI_logo-colour.png
 // @grant        none
 // ==/UserScript==
 
