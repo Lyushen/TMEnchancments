@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.0052
+// @version      1.0053
 // @description  Several enhancements for Theory Test Ireland site, such as autoplay audio questions and answers, roll-up top bar for more space and block useless elements
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -86,56 +86,41 @@ if (enemyScript) {
         }
     }, true);
 
+    // Simulate clicking the audio buttons sequentially with a delay after each audio finishes
     const clickAudioButtonsSequentially = () => {
         const audioIcons = document.querySelectorAll('.question-audio > i');
         const audioElements = document.querySelectorAll('.test-audio');
+
+        if (audioIcons.length < 5 || audioElements.length < 5) return;
+
         let currentIconIndex = 0;
-    
-        // Check play position and continue from there
-        for (let i = 0; i < audioElements.length; i++) {
-            if (!audioElements[i].paused) {
-                currentIconIndex = i + 1;
-                break;
-            }
-        }
-    
+
         const clickNextIcon = () => {
-            if (currentIconIndex < audioIcons.length) {
-                audioIcons[currentIconIndex].click();
-                audioElements[currentIconIndex].addEventListener('ended', function() {
-                    if (currentIconIndex < audioIcons.length - 1) {
-                        currentIconIndex++;
-                        setTimeout(clickNextIcon, 500);
-                    }
-                });
-            }
+            audioIcons[currentIconIndex].click();
+            audioElements[currentIconIndex].addEventListener('ended', function() {
+                if (currentIconIndex < 4) {
+                    currentIconIndex++;
+                    setTimeout(clickNextIcon, -500); // -500ms delay between audios
+                }
+            });
         };
-    
+
         clickNextIcon();
     };
-    
+
     // Start clicking the audio buttons sequentially
     clickAudioButtonsSequentially();
-    
+
+    // Click the sixth audio button when the "Check Answer" button is pressed
     const checkAnswerBtn = document.getElementById("pd-single-question-check");
-    let checkAnswerPressed = false;
-    
     if (checkAnswerBtn) {
         checkAnswerBtn.addEventListener('click', function() {
-            checkAnswerPressed = true;
-        });
-    }
-    
-    // Adjust to play the 6th element after the 5th (4th answer) if Check answer button was pressed
-    document.querySelectorAll('.test-audio')[4].addEventListener('ended', function() {
-        if (checkAnswerPressed) {
             const sixthIcon = document.querySelectorAll('.question-audio > i')[5];
             if (sixthIcon) {
                 sixthIcon.click();
             }
-        }
-    });
-    
+        });
+    }
 
     // Hide header & mobile menu functionality
     const elementsToHide = [
