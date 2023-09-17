@@ -1,10 +1,10 @@
 // ==UserScript==
-// @name         Theory Test Ireland Enhancements
+// @name         Theory Test Ireland Enhancements2
 // @icon         https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/TTI_logo-colour.png
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.0053
+// @version      1.0054
 // @description  Several enhancements for Theory Test Ireland site, such as autoplay audio questions and answers, roll-up top bar for more space and block useless elements
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -23,23 +23,14 @@ const blockTabletElement = () => {
         tabletElement.style.display = 'none';
     }
 };
- 
-// Call the function to block the tablet element
-blockTabletElement();
-    //more space
-    const primaryElement = document.getElementById('primary');
-if (primaryElement) {
-    primaryElement.style.paddingTop = '15px';
-    primaryElement.style.paddingBottom = '0px';
-}
-    const questionHeader = document.querySelector('.pd-question-header');
+
+    // Call the function to block the tablet element
+    blockTabletElement();
+
+    const questionHeader = document.querySelector('i[class="question-prompt"]');
     if (questionHeader) {
         questionHeader.remove();
     }
-    const topicsbarElement = document.querySelector('.topicsbar');
-if (topicsbarElement) {
-    topicsbarElement.style.marginBottom = '10px';
-}
 
 const questionButtonsElement = document.querySelector('.question-buttons');
 if (questionButtonsElement) {
@@ -172,13 +163,13 @@ if (enemyScript) {
 
     window.addEventListener('touchmove', (e) => {
         let touchEndY = e.touches[0].clientY;
-        if (touchEndY - touchStartY > 50) {  // Swipe down
+        if (touchEndY - touchStartY > 50) { // Swipe down
             elementsToHide.forEach(element => {
                 if (element) {
                     element.style.top = '0';
                 }
             });
-        } else if (touchStartY - touchEndY > 50) {  // Swipe up
+        } else if (touchStartY - touchEndY > 50) { // Swipe up
             elementsToHide.forEach(element => {
                 if (element) {
                     element.style.top = '-100%';
