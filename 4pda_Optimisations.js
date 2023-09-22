@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.001
+// @version      1.002
 // @description  Block specific first elements from 4pda.to
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -17,7 +17,29 @@
 
 (function() {
     'use strict';
+ // Find the script and its parent
+ const scripts = document.querySelectorAll('script');
+ let parentElement = null;
+ for (const script of scripts) {
+     if (script.textContent.includes('//d.querySelector( d.["query"+"Selector"](')) {
+         parentElement = script.parentElement;
+         break;
+     }
+ }
 
+ // Disable backgrounds
+ if (parentElement) {
+     // Directly change the inline style
+     parentElement.style.background = 'none !important';
+
+     // Inject a style tag to override any external CSS
+     const uniqueClassName = `disable-bg-${Date.now()}`;
+     parentElement.classList.add(uniqueClassName);
+
+     const styleTag = document.createElement('style');
+     styleTag.innerHTML = `.${uniqueClassName} { background: none !important; }`;
+     document.head.appendChild(styleTag);
+ }
     const keywords = [
         "Росси",
         "яндекс",
