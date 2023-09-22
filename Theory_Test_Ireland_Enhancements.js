@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Theory Test Ireland Enhancements
-// @icon         https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/TTI_logo-colour.png
+// @icon         https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/Resources/TTI_logo-colour.png
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
