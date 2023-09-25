@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.00203
+// @version      1.00204
 // @description  Block specific first elements from 4pda.to
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -36,7 +36,9 @@
         "HUAWEI",
         "AnTuTu",
         "Тинькофф",
-        "Главное за неделю"
+        "Главное за неделю",
+        "«МегаФон",
+        "ФАС"
     ];
 
     let cssRules = keywords.map(keyword => `article[class^="post"]:has(div>h2>a[title*="${keyword}"]) { display: none !important; }`).join(' ');
