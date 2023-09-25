@@ -38,7 +38,8 @@
         "Тинькофф",
         "Главное за неделю",
         "«МегаФон",
-        "ФАС"
+        "ФАС",
+        "«Аврора"
     ];
 
     let cssRules = keywords.map(keyword => `article[class^="post"]:has(div>h2>a[title*="${keyword}"]) { display: none !important; }`).join(' ');
