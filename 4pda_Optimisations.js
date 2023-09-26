@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.00207
+// @version      1.00208
 // @description  Block specific first elements from 4pda.to
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -20,6 +20,7 @@
 
     const keywords = [
         "Росси",
+        "россий",
         "яндекс",
         "Яндекс",
         "Yandex",
