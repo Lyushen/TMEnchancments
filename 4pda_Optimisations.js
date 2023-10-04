@@ -46,7 +46,9 @@
         "MTC",
         "Lada",
         "МТС",
-        "Госдум"
+        "Госдум",
+        "М.Видео",
+        "Трансмашхолдинг"
     ];
 
     let cssRules = keywords.map(keyword => `article[class^="post"]:has(div>h2>a[title*="${keyword}"]) { display: none !important; }`).join(' ');
