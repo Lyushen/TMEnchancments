@@ -48,7 +48,10 @@
         "МТС",
         "Госдум",
         "М.Видео",
-        "Трансмашхолдинг"
+        "Трансмашхолдинг",
+        "Москвич",
+        "Р-ФОН",
+        "Минцифры"
     ];
 
     let cssRules = keywords.map(keyword => `article[class^="post"]:has(div>h2>a[title*="${keyword}"]) { display: none !important; }`).join(' ');
