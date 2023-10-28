@@ -51,7 +51,8 @@
         "Трансмашхолдинг",
         "Москвич",
         "Р-ФОН",
-        "Минцифры"
+        "Минцифры",
+        "ВКонтакте"
     ];
 
     let cssRules = keywords.map(keyword => `article[class^="post"]:has(div>h2>a[title*="${keyword}"]) { display: none !important; }`).join(' ');
