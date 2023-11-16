@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.00214
+// @version      1.00215
 // @description  Block specific first elements from 4pda.to
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -30,6 +30,7 @@
         "VK Видео",
         "Смута",
         "Смуты",
+        "Смуте",
         "Слух:",
         "Инсайд:",
         "Инсайды",
