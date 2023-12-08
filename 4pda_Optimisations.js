@@ -56,7 +56,8 @@
         "ВКонтакте",
         "россиян",
         "Одноклассник",
-        "«Русы против ящеров»"
+        "«Русы против ящеров»",
+        "Госуслуг"
     ];
 
     let cssRules = keywords.map(keyword => `article[class^="post"]:has(div>h2>a[title*="${keyword}"]) { display: none !important; }`).join(' ');
