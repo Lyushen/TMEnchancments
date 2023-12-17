@@ -1,0 +1,70 @@
+google.com##div[id^="eob_"]
+3dnews.ru##*:has(>a[href*="servernews.ru"])
+3dnews.ru##.relatedbox, .rbxglob
+3dnews.ru##.entry-meta
+3dnews.ru##.comment-warn
+twitch.tv##.top-bar
+3dnews.ru##.sp-form-outer
+hi-news.ru###social
+hi-news.ru##.news
+hi-news.ru##.related-posts
+hi-news.ru##.tags
+hi-news.ru##.large-text
+hi-news.ru##.more-link
+||rustorka.naylo.top/forum/misc/js/fancybox.js$domain=rustorka.naylo.top
+||rustorka.naylo.top/ajax.php$domain=rustorka.naylo.top
+||rustorka.naylo.top/forum/misc/js/scrolltopcontrol.js$domain=rustorka.naylo.top
+||rustorka.naylo.top/forum/misc/js/ct1.jquery.js?v=2$domain=rustorka.naylo.top
+/abs.jpg$domain=freetp.org
+/abs.jpg$domain=freetp.org
+skyscanner.ie###cookie-banner-root
+csmobiles.com###_desktop_logo
+promo.worldofwarships.eu##.page-content
+amedia.online##.topnews
+amedia.online##.film-desc
+fetlife.com##rc
+sachtienganhhn.net###right-sidebar
+myhome.ie##.PropertyBrochure__Ad
+meetup.com###try-pro-links
+meetup.com###start-new-group-link
+meetup.com###main_footer
+donedeal.ie##div[class*="styles__SWhitePanel-sc-"]
+donedeal.ie##div[class*="GreenlightPanel__"]
+donedeal.ie##div[class^="InfoPanel__ServicePartnerWrapper"]
+donedeal.ie##div[class^="SimpleShowMore__SimpleShowMoreContainer-sc-"]
+donedeal.ie##div[class^="InfoPanel__DFP-sc-"]
+donedeal.ie##div[class^="PromoPanelCollection__Container-sc-"]
+donedeal.ie##div[class^="AdDetails__SeoContainer-sc-"]
+donedeal.ie##div[class*="__FeaturedDealerContainer-sc-"]
+donedeal.ie##footer[class^="Footer__Wrapper-sc-"]
+donedeal.ie##div[class^="styles__InternalLinksContainer-sc-"]
+donedeal.ie#$#ul[data-testid="card-list"][class^="Listings__List-sc-"] { gap: 2px !important; }
+donedeal.ie##li:has(> div > div > div > p:contains(SPOTLIGHT))
+massage2book.com#%#//scriptlet('set-attr', 'input[id$="Hiddenlblmobile"]', 'type', '')
+theorytest-ireland.com###google_esf
+theorytest-ireland.com##div.container-lg:style(margin-top: 0 !important; padding: 0 !important;)
+theorytest-ireland.com##.col-md-8:style(width: 100% !important; max-width: 1200px !important; margin: 0 auto !important;)
+theorytest-ireland.com##.card-title.fs-6:style(font-size: 150% !important;)
+theorytest-ireland.com##.lst-car-item.fs-6:style(font-size: 150% !important;)
+theorytest-ireland.com##.navbar-nav:style(--bs-nav-link-padding-x: 0 !important; --bs-nav-link-padding-y: 0 !important;)
+theorytest-ireland.com##.navbar:style(position: static !important; padding: 0px !important;)
+theorytest-ireland.com##html:style(--bs-body-line-height: initial !important;)
+theorytest-ireland.com##body:style(padding: 0 !important;)
+theorytest-ireland.com##div.container-lg > br
+theorytest-ireland.com##footer
+theorytest-ireland.com##div[class$="question-container"]:style(padding: 0px !important;)
+theorytest-ireland.com##div[class$="questionPanelCar"]:style(padding: 1px !important;)
+theorytest-ireland.com##div.row:style(margin: 0px !important;)
+theorytest-ireland.com##img[class="d-inline-block align-text-top"]:style(width: 50px !important;)
+theorytest-ireland.com##button[data-bs-target="#navbarNav"]:style(padding: 0px !important;)
+theorytest-ireland.com##center:has(span.advert)
+4pda.to##.menu-brands
+||*yandex*^$third-party
+||yadro.ru^
+allgames.zone##body > div.wrapper.coll-container:style(max-width: none !important;)
+allgames.zone##body > div.wrapper.coll-container:style(margin-top: 0 !important;)
+allgames.zone##.footer
+amazon.*##[class*="AdHolder"]
+amazon.*##.s-result-item.AdHolder[data-asin]
+amazon.*##div[data-asin][class*="AdHolder"]
+chat.openai.com##.text-xs
