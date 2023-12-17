@@ -66,5 +66,3 @@ allgames.zone##body > div.wrapper.coll-container:style(margin-top: 0 !important;
 allgames.zone##.footer
 amazon.*##[class*="AdHolder"]
 amazon.*##.s-result-item.AdHolder[data-asin]
-amazon.*##div[data-asin][class*="AdHolder"]
-chat.openai.com##.text-xs
