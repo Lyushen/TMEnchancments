@@ -66,3 +66,6 @@ allgames.zone##body > div.wrapper.coll-container:style(margin-top: 0 !important;
 allgames.zone##.footer
 amazon.*##[class*="AdHolder"]
 amazon.*##.s-result-item.AdHolder[data-asin]
+rtings.com##.app-sticky_header-content
+||rustorka.naylo.top/ajaxscript.php$domain=rustorka.naylo.top
+account.mygovid.ie##.mygovid-overlay
