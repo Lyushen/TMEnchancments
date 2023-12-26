@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         Theory Test Ireland Enhancements
-// @icon         https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/Resources/TTI_logo-colour.png
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=theorytestireland.org
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.0054
+// @version      1.0055
 // @description  Several enhancements for Theory Test Ireland site, such as autoplay audio questions and answers, roll-up top bar for more space and block useless elements
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
