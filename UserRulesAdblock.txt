@@ -11,10 +11,6 @@ hi-news.ru##.related-posts
 hi-news.ru##.tags
 hi-news.ru##.large-text
 hi-news.ru##.more-link
-||rustorka.naylo.top/forum/misc/js/fancybox.js$domain=rustorka.naylo.top
-||rustorka.naylo.top/ajax.php$domain=rustorka.naylo.top
-||rustorka.naylo.top/forum/misc/js/scrolltopcontrol.js$domain=rustorka.naylo.top
-||rustorka.naylo.top/forum/misc/js/ct1.jquery.js?v=2$domain=rustorka.naylo.top
 /abs.jpg$domain=freetp.org
 /abs.jpg$domain=freetp.org
 skyscanner.ie###cookie-banner-root
