@@ -18,7 +18,7 @@
     'use strict';
 
     document.addEventListener('keydown', function(e) {
-        // Trigger on Ctrl+E
+        // Trigger on Ctrl+B
         if ((e.ctrlKey && e.key === 'b') || (e.ctrlKey && e.key === 'и')) {
             // Find the div under 'main' with the specific data-id pattern
             var elements = document.querySelectorAll('div#main div[data-id]');
