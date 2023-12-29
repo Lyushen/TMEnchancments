@@ -1,11 +1,11 @@
 // ==UserScript==
-// @name         WhatsApp Number Extractor ctrl+e
+// @name         WhatsApp Number Extractor ctrl+b
 // @icon         https://raw.githubusercontent.com/Lyushen/TMEnchancments/Resources/whatsapp.ico
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.3002
-// @description  Extract phone number from a specific div under 'main' in WhatsApp Web and copy to clipboard on Ctrl+E
+// @version      1.3003
+// @description  Extract phone number from a specific div under 'main' in WhatsApp Web and copy to clipboard on Ctrl+B
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
 // @updateURL    https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/WebWhatsApp_Ench.js
