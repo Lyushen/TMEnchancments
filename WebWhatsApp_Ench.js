@@ -19,7 +19,7 @@
 
     document.addEventListener('keydown', function(e) {
         // Trigger on Ctrl+E
-        if (e.ctrlKey && e.key === 'e') {
+        if ((e.ctrlKey && e.key === 'b') || (e.ctrlKey && e.key === 'и')) {
             // Find the div under 'main' with the specific data-id pattern
             var elements = document.querySelectorAll('div#main div[data-id]');
             for (var i = 0; i < elements.length; i++) {
