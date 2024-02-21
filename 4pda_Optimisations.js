@@ -63,7 +63,8 @@
         "Рувики",
         "«Шедеврум»",
         "«Русы против Ящеров»",
-        "МВД"
+        "МВД",
+        "Минфин"
     ];
 
     let cssRules = keywords.map(keyword => `article[class^="post"]:has(div>h2>a[title*="${keyword}"]) { display: none !important; }`).join(' ');
