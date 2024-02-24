@@ -64,7 +64,8 @@
         "«Шедеврум»",
         "«Русы против Ящеров»",
         "МВД",
-        "Минфин"
+        "Минфин",
+        "«Русам против ящеров»"
     ];
 
     let cssRules = keywords.map(keyword => `article[class^="post"]:has(div>h2>a[title*="${keyword}"]) { display: none !important; }`).join(' ');
