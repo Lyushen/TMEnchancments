@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.00219
+// @version      1.00220
 // @description  Block specific first elements from 4pda.to
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -67,7 +67,8 @@
         "Минфин",
         "«Русам против ящеров»",
         "«Санёк»",
-        "Роскомнадзор"
+        "Роскомнадзор",
+        "HyperOS"
     ];
 
     let cssRules = keywords.map(keyword => `article[class^="post"]:has(div>h2>a[title*="${keyword}"]) { display: none !important; }`).join(' ');
