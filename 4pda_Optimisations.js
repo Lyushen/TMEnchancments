@@ -68,7 +68,8 @@
         "«Русам против ящеров»",
         "«Санёк»",
         "Роскомнадзор",
-        "HyperOS"
+        "HyperOS",
+        "Sber"
     ];
 
     let cssRules = keywords.map(keyword => `article[class^="post"]:has(div>h2>a[title*="${keyword}"]) { display: none !important; }`).join(' ');
