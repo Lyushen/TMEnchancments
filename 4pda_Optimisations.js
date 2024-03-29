@@ -73,7 +73,8 @@
         "QIWI",
         "Slavania",
         "INDIKA",
-        "Байкал Электроникс"
+        "Байкал Электроникс",
+        "Mir Pay"
     ];
 
     let cssRules = keywords.map(keyword => `article[class^="post"]:has(div>h2>a[title*="${keyword}"]) { display: none !important; }`).join(' ');
