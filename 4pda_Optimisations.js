@@ -75,7 +75,8 @@
         "INDIKA",
         "Байкал Электроникс",
         "Mir Pay",
-        "ФТС"
+        "ФТС",
+        "Маркетплейс"
     ];
 
     let cssRules = keywords.map(keyword => `article[class^="post"]:has(div>h2>a[title*="${keyword}"]) { display: none !important; }`).join(' ');
