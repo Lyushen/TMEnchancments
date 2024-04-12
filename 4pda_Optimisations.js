@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.00223
+// @version      1.00224
 // @description  Block specific first elements from 4pda.to
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -102,7 +102,7 @@
         const articles = document.querySelectorAll('article[class^="post"]');
         articles.forEach(article => {
             const bgColor = getComputedStyle(article).backgroundColor;
-            if (bgColor === "rgb(90, 111, 122)") {
+            if (bgColor === "rgb(90, 111, 122)"|| /wide/.test(article.className))  {
                 article.style.display = 'none';
             }
         });
@@ -115,6 +115,23 @@
                 if (imgElement) {
                     parentElement.style.display = 'none';
                 }
+            }
+        });
+        // New loop to hide <lek> elements with <a> tags having target="_blank"
+        const lekElements = document.querySelectorAll('lek');
+        lekElements.forEach(lek => {
+            const aTag = lek.querySelector('a[target="_blank"]');
+            if (aTag) {
+                lek.style.display = 'none';
+            }
+        });
+        
+        // New pattern for hiding specific links with `utm_source`
+        const promotionalLinks = document.querySelectorAll('a[href*="utm_source"]');
+        promotionalLinks.forEach(link => {
+            let parentElement = link.closest('li');
+            if (parentElement && parentElement.classList.contains('menu-main-item')) {
+                parentElement.style.display = 'none';
             }
         });
     };
