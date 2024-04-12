@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.00226
+// @version      1.00227
 // @description  Block specific first elements from 4pda.to
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -114,6 +114,14 @@
                 let imgElement = parentElement.querySelector('img[src^="https://4pda.to/s/"]');
                 if (imgElement) {
                     parentElement.style.display = 'none';
+                }
+            }
+            
+            // Check for specific script content and modify parent background style
+            if (script.textContent.includes('querySelector')) {
+                let parentElement = script.parentElement;
+                if (parentElement) {
+                    parentElement.style.background = 'none !important'; // Disable background image
                 }
             }
         });
