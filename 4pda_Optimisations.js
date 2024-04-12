@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.00224
+// @version      1.00225
 // @description  Block specific first elements from 4pda.to
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -125,12 +125,21 @@
                 lek.style.display = 'none';
             }
         });
-        
+
         // New pattern for hiding specific links with `utm_source`
         const promotionalLinks = document.querySelectorAll('a[href*="utm_source"]');
         promotionalLinks.forEach(link => {
             let parentElement = link.closest('li');
             if (parentElement && parentElement.classList.contains('menu-main-item')) {
+                parentElement.style.display = 'none';
+            }
+        });
+
+        // New loop to hide elements based on child <a> with role="button"
+        const buttonRoleLinks = document.querySelectorAll('a[role="button"]');
+        buttonRoleLinks.forEach(link => {
+            let parentElement = link.parentElement; // Assuming immediate parent needs to be hidden
+            if (parentElement) {
                 parentElement.style.display = 'none';
             }
         });
