@@ -102,11 +102,11 @@
         const articles = document.querySelectorAll('article[class^="post"]');
         articles.forEach(article => {
             const bgColor = getComputedStyle(article).backgroundColor;
-            if (bgColor === "rgb(90, 111, 122)"|| /wide/.test(article.className))  {
+            if (bgColor === "rgb(90, 111, 122)" || /wide-[123]/.test(article.className)) {
                 article.style.display = 'none';
             }
         });
-
+    
         const scripts = document.querySelectorAll('script');
         scripts.forEach(script => {
             if (script.textContent.includes('cw=document.body.clientWidth')) {
@@ -116,15 +116,16 @@
                     parentElement.style.display = 'none';
                 }
             }
-            //d["query"+"Selector"]( d.["query"+"Selector"](
-            // Check for specific script content and modify parent background style
-            if (script.textContent.includes('["query"+"Selector"]')) {
+    
+            // New check for the specific script content and modify parent background style
+            if (/\/\/d\["query"\+"Selector"\]\( d.\["query"\+"Selector"\]\(/.test(script.textContent)) {
                 let parentElement = script.parentElement;
                 if (parentElement) {
-                    parentElement.style.background = 'none !important'; // Disable background image
+                    parentElement.style.background = 'none'; // Removing the background image
+                    parentElement.style.backgroundImage = 'none !important'; // Ensuring no image is shown
                 }
             }
-        });фчц
+        });
         // New loop to hide <lek> elements with <a> tags having target="_blank"
         const lekElements = document.querySelectorAll('lek');
         lekElements.forEach(lek => {
