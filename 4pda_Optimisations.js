@@ -10,7 +10,7 @@
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
 // @updateURL    https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/4pda_Optimisations.js
 // @downloadURL  https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/4pda_Optimisations.js
-// @grant        none
+// @grant        none 
 // @match        *://4pda.to/*
 // ==/UserScript==
 //4pda.to##article[class^="post"]:has(div>h2>a[title*="HUAWEI"])
