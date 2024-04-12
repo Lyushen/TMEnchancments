@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.00227
+// @version      1.00228
 // @description  Block specific first elements from 4pda.to
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -116,15 +116,15 @@
                     parentElement.style.display = 'none';
                 }
             }
-            
+            //d["query"+"Selector"]( d.["query"+"Selector"](
             // Check for specific script content and modify parent background style
-            if (script.textContent.includes('querySelector')) {
+            if (script.textContent.includes('["query"+"Selector"]')) {
                 let parentElement = script.parentElement;
                 if (parentElement) {
                     parentElement.style.background = 'none !important'; // Disable background image
                 }
             }
-        });
+        });фчц
         // New loop to hide <lek> elements with <a> tags having target="_blank"
         const lekElements = document.querySelectorAll('lek');
         lekElements.forEach(lek => {
