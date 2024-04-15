@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.0002
+// @version      1.0003
 // @description  Transform YouTube embed URL to watch URL on keypress Ctrl+B
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -12,9 +12,8 @@
 // @downloadURL  https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/Embed_YouTube_Extractor.js
 // @grant        none
 // @match        *://smm-therapy.kwiga.com/*
-// @match        *://*/*
 // ==/UserScript==
-
+// @match        *://*/*
 (function() {
     'use strict';
 
