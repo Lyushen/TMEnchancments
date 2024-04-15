@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.0001
+// @version      1.0002
 // @description  Transform YouTube embed URL to watch URL on keypress Ctrl+B
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -19,13 +19,18 @@
     'use strict';
 
     // Function to convert embed URL to watch URL
-    function convertEmbedUrlToWatchUrl() {
+    function convertAndCopyUrl() {
         const iframe = document.querySelector('iframe.player');
         if (iframe && iframe.src.includes('youtube-nocookie.com/embed/')) {
             const videoId = iframe.src.split('/embed/')[1].split('?')[0];
             const newUrl = `https://www.youtube.com/watch?v=${videoId}`;
             iframe.src = newUrl;
             console.log('URL transformed:', newUrl);
+
+            // Copying the new URL to the clipboard
+            navigator.clipboard.writeText(newUrl)
+                .then(() => console.log('URL copied to clipboard!'))
+                .catch(err => console.error('Failed to copy URL: ', err));
         } else {
             console.log('No suitable iframe found or already transformed');
         }
@@ -35,7 +40,7 @@
     document.addEventListener('keydown', function(e) {
         // Check if Ctrl+B is pressed
         if (e.ctrlKey && e.key === 'b') {
-            convertEmbedUrlToWatchUrl();
+            convertAndCopyUrl();
         }
     });
 })();
