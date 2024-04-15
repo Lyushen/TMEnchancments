@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.0006
+// @version      1.0007
 // @description  Transform YouTube embed URL to watch URL on keypress Ctrl+B
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -34,13 +34,12 @@
             newUrl = `https://www.youtube.com/watch?v=${videoId}`;
             iframe.src = newUrl;
         } else {
-            // Fallback: Find URL within <noscript> tag if iframe is not found or not as expected
-            const noscriptTag = document.querySelector('noscript');
-            if (noscriptTag) {
-                const aTag = noscriptTag.querySelector('a');
-                if (aTag && aTag.href.includes('youtube.com/watch')) {
-                    newUrl = aTag.href;
-                }
+            // Fallback: Find URL within <noscript> using the specific class structure
+            const noscriptContent = document.createElement("div");
+            noscriptContent.innerHTML = document.querySelector("noscript").textContent;
+            const aTag = noscriptContent.querySelector('.player-unavailable .submessage a');
+            if (aTag && aTag.href.includes('youtube.com/watch')) {
+                newUrl = aTag.href;
             }
         }
 
