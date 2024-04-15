@@ -116,16 +116,8 @@
                     parentElement.style.display = 'none';
                 }
             }
-    
-            // New check for the specific script content and modify parent background style
-            if (/\/\/d\["query"\+"Selector"\]\( d.\["query"\+"Selector"\]\(/.test(script.textContent)) {
-                let parentElement = script.parentElement;
-                if (parentElement) {
-                    parentElement.style.background = 'none'; // Removing the background image
-                    parentElement.style.backgroundImage = 'none !important'; // Ensuring no image is shown
-                }
-            }
         });
+        
         // New loop to hide <lek> elements with <a> tags having target="_blank"
         const lekElements = document.querySelectorAll('lek');
         lekElements.forEach(lek => {
