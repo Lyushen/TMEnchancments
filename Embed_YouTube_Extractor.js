@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.0007
+// @version      1.0009
 // @description  Transform YouTube embed URL to watch URL on keypress Ctrl+B
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -21,24 +21,21 @@
     // Function to convert URL and copy it to clipboard
     function convertAndCopyUrl() {
         // Attempt to find different iframe players
-        let iframe = document.querySelector('iframe.player');
-        if (!iframe || !iframe.src.includes('youtube-nocookie.com/embed/')) {
-            // Try finding alternative class for iframe
-            iframe = document.querySelector('iframe.youtube-player__iframe');
-        }
-
+        const allIframes = document.querySelectorAll('iframe[src*="youtube.com/embed/"]');
         let newUrl;
 
-        if (iframe && iframe.src.includes('youtube.com/embed/')) {
+        // Process the first YouTube iframe found
+        if (allIframes.length > 0) {
+            const iframe = allIframes[0]; // You can loop through all if necessary
             const videoId = iframe.src.split('/embed/')[1].split('?')[0];
             newUrl = `https://www.youtube.com/watch?v=${videoId}`;
             iframe.src = newUrl;
         } else {
-            // Fallback: Find URL within <noscript> using the specific class structure
+            // Fallback: Find URL within <noscript> using a generic method
             const noscriptContent = document.createElement("div");
             noscriptContent.innerHTML = document.querySelector("noscript").textContent;
-            const aTag = noscriptContent.querySelector('.player-unavailable .submessage a');
-            if (aTag && aTag.href.includes('youtube.com/watch')) {
+            const aTag = noscriptContent.querySelector('a[href*="youtube.com/watch"]');
+            if (aTag) {
                 newUrl = aTag.href;
             }
         }
