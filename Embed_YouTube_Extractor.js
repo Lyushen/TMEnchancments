@@ -4,13 +4,13 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.0003
+// @version      1.0004
 // @description  Transform YouTube embed URL to watch URL on keypress Ctrl+B
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
 // @updateURL    https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/Embed_YouTube_Extractor.js
 // @downloadURL  https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/Embed_YouTube_Extractor.js
-// @grant        none
+// @grant        GM_setClipboard
 // @match        *://smm-therapy.kwiga.com/*
 // ==/UserScript==
 // @match        *://*/*
@@ -25,11 +25,13 @@
             const newUrl = `https://www.youtube.com/watch?v=${videoId}`;
             iframe.src = newUrl;
             console.log('URL transformed:', newUrl);
-
+            
+            
             // Copying the new URL to the clipboard
-            navigator.clipboard.writeText(newUrl)
+            GM_setClipboard(newUrl);
+/*             navigator.clipboard.writeText(newUrl)
                 .then(() => console.log('URL copied to clipboard!'))
-                .catch(err => console.error('Failed to copy URL: ', err));
+                .catch(err => console.error('Failed to copy URL: ', err)); */
         } else {
             console.log('No suitable iframe found or already transformed');
         }
