@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.0004
+// @version      1.0005
 // @description  Transform YouTube embed URL to watch URL on keypress Ctrl+B
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -16,7 +16,7 @@
 // @match        *://*/*
 (function() {
     'use strict';
-
+    console.log('[Loaded]  Embed YouTube Extractor');
     // Function to convert embed URL to watch URL
     function convertAndCopyUrl() {
         const iframe = document.querySelector('iframe.player');
@@ -40,7 +40,8 @@
     // Event listener for keypress event
     document.addEventListener('keydown', function(e) {
         // Check if Ctrl+B is pressed
-        if (e.ctrlKey && e.key === 'b') {
+        console.log('Ctrl+B pressed');
+        if ((e.ctrlKey && e.key === 'b') || (e.ctrlKey && e.key === 'и')) {
             convertAndCopyUrl();
         }
     });
