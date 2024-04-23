@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.3007
+// @version      1.3008
 // @description  Extract phone number from a specific div under 'main' in WhatsApp Web and copy to clipboard on Ctrl+Y
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -27,10 +27,10 @@
 
         .message-box {
             position: fixed;
-            top: 20%;
+            top: 50%;
             left: 50%;
             transform: translateX(-50%);
-            background-color: rgba(0, 0, 0, 0.5);
+            background-color: rgba(0, 0, 0, 1);
             color: white;
             padding: 10px 20px;
             border-radius: 5px;
