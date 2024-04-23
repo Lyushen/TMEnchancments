@@ -4,8 +4,8 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.3005
-// @description  Extract phone number from a specific div under 'main' in WhatsApp Web and copy to clipboard on Ctrl+B
+// @version      1.3007
+// @description  Extract phone number from a specific div under 'main' in WhatsApp Web and copy to clipboard on Ctrl+Y
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
 // @updateURL    https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/WebWhatsApp_Ench.js
@@ -37,7 +37,7 @@
             z-index: 1000;
             font-size: 16px;
             display: none;
-            animation: fadeOut 1s ease-in-out 2s forwards;
+            animation: fadeOut 1s ease-in-out 1s forwards;
         }
     `;
     document.head.appendChild(style);
