@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.002
+// @version      1.003
 // @description  This script presses the Next element that will switch to a new video when it's about to end. Tracks video progress and triggers a button click near the end, with notifications.
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -19,6 +19,7 @@
 
     const checkInterval = 500; // Check every 500 ms
     const thresholdSeconds = 3; // Trigger 3 seconds before the video ends
+    const startThreshold = 3; // Start monitoring after 3 seconds of playback
 
     function showNotification(message) {
         const existingNotification = document.getElementById('gm-notification');
@@ -35,7 +36,7 @@
         notification.style.border = '1px solid #ccc';
         notification.style.borderRadius = '5px';
         notification.style.padding = '10px';
-        notification.style.zIndex = '10000';
+        notification.style.zIndex = '10001';
         notification.style.transition = 'opacity 1s';
         notification.innerText = message;
 
@@ -62,7 +63,7 @@
                     const currentTime = parseTime(currentTimeStr);
                     const totalTime = parseTime(totalTimeStr);
 
-                    if ((totalTime - currentTime) <= thresholdSeconds) {
+                    if (currentTime >= startThreshold && (totalTime - currentTime) <= thresholdSeconds) {
                         const button = document.querySelector('[role="link"][data-purpose="go-to-next"]');
                         if (button) {
                             button.click();
