@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.009
+// @version      1.010
 // @description  This script presses the Next element that will switch to a new video when it's about to end. Tracks video progress and triggers a button click near the end, with notifications.
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -18,7 +18,7 @@
     'use strict';
 
     const checkInterval = 500; // Check every 500 ms
-    const thresholdSeconds = 3; // Trigger 3 seconds before the video ends
+    const thresholdSeconds = 4; // Trigger 4 seconds before the video ends
     const startThreshold = 3; // Start monitoring after 3 seconds of playback
     const notificationLeadTime = 1500; // Notification appears 1.5 seconds before the action
 
