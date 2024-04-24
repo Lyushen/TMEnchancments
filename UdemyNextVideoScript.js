@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.005
+// @version      1.006
 // @description  This script presses the Next element that will switch to a new video when it's about to end. Tracks video progress and triggers a button click near the end, with notifications.
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -68,6 +68,9 @@
                         if (button) {
                             button.click();
                             showNotification("Next Video");
+                            setTimeout(() => {
+                                intervalHandle = setInterval(monitorVideo, checkInterval);  // Restart the monitoring after a delay
+                            }, 500);  // 500 ms delay before rechecking
                         }
                     }
                 }
