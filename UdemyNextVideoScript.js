@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.003
+// @version      1.005
 // @description  This script presses the Next element that will switch to a new video when it's about to end. Tracks video progress and triggers a button click near the end, with notifications.
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -30,8 +30,8 @@
         const notification = document.createElement('div');
         notification.id = 'gm-notification';
         notification.style.position = 'fixed';
-        notification.style.top = '10px';
-        notification.style.right = '10px';
+        notification.style.top = '45%';
+        notification.style.right = '50%';
         notification.style.background = 'rgba(255, 255, 255, 0.9)';
         notification.style.border = '1px solid #ccc';
         notification.style.borderRadius = '5px';
