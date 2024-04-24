@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.007
+// @version      1.009
 // @description  This script presses the Next element that will switch to a new video when it's about to end. Tracks video progress and triggers a button click near the end, with notifications.
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -20,16 +20,11 @@
     const checkInterval = 500; // Check every 500 ms
     const thresholdSeconds = 3; // Trigger 3 seconds before the video ends
     const startThreshold = 3; // Start monitoring after 3 seconds of playback
+    const notificationLeadTime = 1500; // Notification appears 1.5 seconds before the action
 
     function showNotification(message) {
         console.log(message);
-        const existingNotification = document.getElementById('gm-notification');
-        if (existingNotification) {
-            document.body.removeChild(existingNotification);
-        }
-
         const notification = document.createElement('div');
-        notification.id = 'gm-notification';
         notification.style.position = 'fixed';
         notification.style.top = '45%';
         notification.style.right = '50%';
@@ -38,20 +33,24 @@
         notification.style.borderRadius = '5px';
         notification.style.padding = '10px';
         notification.style.zIndex = '10001';
-        notification.style.transition = 'opacity 2s';
+        notification.style.transition = 'opacity 1s';
+        notification.style.opacity = 0; // Start transparent
         notification.innerText = message;
-
         document.body.appendChild(notification);
 
-        // Fade in and out
-        notification.style.opacity = 1;
+        // Fade in and automatically remove after a short duration
         setTimeout(() => {
-            notification.style.opacity = 0;
-            setTimeout(() => document.body.removeChild(notification), 1000);
-        }, 1000);
+            notification.style.opacity = 1;
+            setTimeout(() => {
+                notification.style.opacity = 0;
+                setTimeout(() => document.body.removeChild(notification), 1000);
+            }, 1000);
+        }, 500); // Delay showing the notification a bit
     }
 
-    setInterval(() => {
+    let intervalHandle = setInterval(monitorVideo, checkInterval);
+
+    function monitorVideo() {
         const videoElement = document.querySelector('[role="slider"][data-purpose="video-progress-bar"]');
         if (videoElement) {
             const ariaValueText = videoElement.getAttribute('aria-valuetext');
@@ -64,26 +63,27 @@
                     const currentTime = parseTime(currentTimeStr);
                     const totalTime = parseTime(totalTimeStr);
 
-                    if (currentTime >= startThreshold && (totalTime - currentTime) <= thresholdSeconds) {
+                    if (currentTime >= startThreshold && (totalTime - currentTime) <= thresholdSeconds + (notificationLeadTime / 1000)) {
                         const button = document.querySelector('[role="link"][data-purpose="go-to-next"]');
                         if (button) {
-                            button.click();
-                            showNotification("Next Video");
+                            clearInterval(intervalHandle); // Stop checking while processing
+                            showNotification("Next Video in 1.5s");
                             setTimeout(() => {
-                                intervalHandle = setInterval(monitorVideo, checkInterval);  // Restart the monitoring after a delay
-                            }, 500);  // 500 ms delay before rechecking
+                                button.click();
+                                intervalHandle = setInterval(monitorVideo, checkInterval); // Restart monitoring
+                            }, notificationLeadTime);
                         }
                     }
                 }
             }
         }
-    }, checkInterval);
+    }
 
     function parseTime(timeStr) {
         const timeParts = timeStr.split(':').map(Number);
         return timeParts[0] * 60 + timeParts[1];
     }
 
-    // Initial message to show the script has loaded
+    // Show that the script is loaded
     showNotification("Script Loaded");
 })();
