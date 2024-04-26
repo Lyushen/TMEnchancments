@@ -16,11 +16,40 @@
 (function() {
     'use strict';
 
-    const checkInterval = 125; // Check every 500 ms
-    const thresholdSeconds = 3; // Trigger 3 seconds before the video ends
+    const checkInterval = 125; // Check every 125 ms
+    const thresholdSeconds = 5; // Trigger 5 seconds before the video ends
     const startThreshold = 3; // Start monitoring after 3 seconds of playback
-    const notificationLeadTime = 1500; // Notification appears 1.5 seconds before the action
+    const notificationLeadTime = 2000; // Notification appears 2 seconds (2000 ms) before the action
     
+    function monitorVideo() {
+        const videoElement = document.querySelector('[role="slider"][data-purpose="video-progress-bar"]');
+        if (!videoElement) return;
+    
+        const ariaValueText = videoElement.getAttribute('aria-valuetext');
+        if (!ariaValueText) return;
+    
+        const parts = ariaValueText.split(' of ');
+        if (parts.length !== 2) return;
+    
+        const currentTime = parseTime(parts[0].trim());
+        const totalTime = parseTime(parts[1].trim());
+    
+        // Start monitoring after certain playback time and check the time left against threshold
+        if (currentTime < startThreshold || (totalTime - currentTime) > (thresholdSeconds + notificationLeadTime / 1000)) return;
+    
+        // Trigger action if the conditions are met and the button hasn't been clicked yet
+        const button = document.querySelector('[role="link"][data-purpose="go-to-next"]');
+        if (button && !button.disabled) {
+            button.disabled = true; // Use a disabled property to prevent multiple triggers
+            showNotification(`Next Video in ${notificationLeadTime / 1000}s`, notificationLeadTime / 1000);
+    
+            setTimeout(() => {
+                button.click();
+                button.disabled = false;
+            }, notificationLeadTime);
+        }
+    }
+
     function showNotification(message, duration = 1000, add_message='') {
         console.log(message+add_message);
         const notification = document.createElement('div');
@@ -45,35 +74,6 @@
                 setTimeout(() => document.body.removeChild(notification), duration);
             }, duration);
         }, 500); // Delay showing the notification a bit
-    }
-
-    function monitorVideo() {
-        const videoElement = document.querySelector('[role="slider"][data-purpose="video-progress-bar"]');
-        if (videoElement) {
-            const ariaValueText = videoElement.getAttribute('aria-valuetext');
-            if (ariaValueText) {
-                const parts = ariaValueText.split(' of ');
-                if (parts.length === 2) {
-                    const currentTimeStr = parts[0].trim();
-                    const totalTimeStr = parts[1].trim();
-
-                    const currentTime = parseTime(currentTimeStr);
-                    const totalTime = parseTime(totalTimeStr);
-
-                    if (currentTime >= startThreshold && (totalTime - currentTime) <= (thresholdSeconds + notificationLeadTime / 1000)) {
-                        const button = document.querySelector('[role="link"][data-purpose="go-to-next"]');
-                        if (button && !button.clicked) {
-                            button.clicked = true;
-                            showNotification(`Next Video in 1.5s`, notificationLeadTime, ariaValueText);
-                            setTimeout(() => {
-                                button.click();
-                                button.clicked = false;
-                            }, notificationLeadTime);
-                        }
-                    }
-                }
-            }
-        }
     }
 
     function parseTime(timeStr) {
