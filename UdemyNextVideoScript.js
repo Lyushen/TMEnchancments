@@ -40,7 +40,8 @@
         // Display notification at the specified lead time before the video ends
         if ((totalTime - currentTime) <= (thresholdSeconds + notificationLeadTime) && !videoElement.notificationShown) {
             videoElement.notificationShown = true; // Set a flag to ensure notification is shown only once
-            showNotification(`Next Video in ${notificationLeadTime}s`, notificationLeadTime, '\n' + ariaValueText);
+            console.log(`Notification is triggered at ${ariaValueText}`)
+            showNotification(`Next Video in ${notificationLeadTime}s`, notificationLeadTime);
         }
     
         // Trigger the button click and manage the button state based on video progress
@@ -49,6 +50,7 @@
             // If video time is within the trigger threshold, click the button if not disabled
             if ((totalTime - currentTime) <= thresholdSeconds && !button.disabled) {
                 button.click();
+                console.log(`Button is pressed at ${ariaValueText}`)
                 button.disabled = true; // Immediately disable the button to prevent multiple clicks
                 videoElement.lastClickTime = currentTime; // Record the last click time
             }
@@ -56,6 +58,7 @@
             // Check if the currentTime has advanced at least 2 seconds from the last click time, then re-enable
             if (button.disabled && videoElement.lastClickTime && (currentTime - videoElement.lastClickTime >= 2)) {
                 button.disabled = false;
+                console.log(`Button is is enabled to be re-pressed at ${ariaValueText}`)
                 videoElement.notificationShown = false; // Reset the notification shown flag
             }
         }
@@ -88,11 +91,10 @@
         `, style.sheet.cssRules.length);
     }
     
-    function showNotification(message, duration = 1000, add_message = '') {
-        console.log(message + add_message);
+    function showNotification(message, duration = 1000) {
         const notification = document.createElement('div');
         notification.className = 'notification';
-        notification.innerText = message + add_message;
+        notification.innerText = message;
         document.body.appendChild(notification);
     
         // Setting up animation duration dynamically based on the duration argument
@@ -114,5 +116,5 @@
     addNotificationStyles();
     // Setup interval and initial notification
     setInterval(monitorVideo, checkInterval);
-    showNotification("Script Loaded");
+    //showNotification("Script Loaded");
 })();
