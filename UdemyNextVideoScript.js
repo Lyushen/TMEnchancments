@@ -19,7 +19,7 @@
     const checkInterval = 125; // Check every 125 ms
     const thresholdSeconds = 5; // Trigger 5 seconds before the video ends
     const startThreshold = 3; // Start monitoring after 3 seconds of playback
-    const notificationLeadTime = 2; // Notification appears 2 seconds before the action
+    const notificationLeadTime = 2; // Notification appears 2 seconds before the action, in milliseconds
     
     function monitorVideo() {
         const videoElement = document.querySelector('[role="slider"][data-purpose="video-progress-bar"]');
@@ -34,19 +34,30 @@
         const currentTime = parseTime(parts[0].trim());
         const totalTime = parseTime(parts[1].trim());
     
-        // Start monitoring after certain playback time and check the time left against threshold
-        if (currentTime < startThreshold || (totalTime - currentTime) > (thresholdSeconds + notificationLeadTime)) return;
+        // Check if it's time to start monitoring the video playback
+        if (currentTime < startThreshold) return;
     
-        // Trigger action if the conditions are met and the button hasn't been clicked yet
+        // Display notification at the specified lead time before the video ends
+        if ((totalTime - currentTime) <= (thresholdSeconds + notificationLeadTime) && !videoElement.notificationShown) {
+            videoElement.notificationShown = true; // Set a flag to ensure notification is shown only once
+            showNotification(`Next Video in ${notificationLeadTime}s`, notificationLeadTime, '\n' + ariaValueText);
+        }
+    
+        // Trigger the button click and manage the button state based on video progress
         const button = document.querySelector('[role="link"][data-purpose="go-to-next"]');
-        if (button && !button.disabled) {
-            button.disabled = true; // Use a disabled property to prevent multiple triggers
-            showNotification(`Next Video in ${notificationLeadTime}s`, notificationLeadTime, ariaValueText);
-    
-            setTimeout(() => {
+        if (button) {
+            // If video time is within the trigger threshold, click the button if not disabled
+            if ((totalTime - currentTime) <= thresholdSeconds && !button.disabled) {
                 button.click();
+                button.disabled = true; // Immediately disable the button to prevent multiple clicks
+                videoElement.lastClickTime = currentTime; // Record the last click time
+            }
+    
+            // Check if the currentTime has advanced at least 2 seconds from the last click time, then re-enable
+            if (button.disabled && videoElement.lastClickTime && (currentTime - videoElement.lastClickTime >= 2)) {
                 button.disabled = false;
-            }, notificationLeadTime);
+                videoElement.notificationShown = false; // Reset the notification shown flag
+            }
         }
     }
 
@@ -93,15 +104,14 @@
         });
     }
     
-    // Add the styles on load or whenever appropriate
-    addNotificationStyles();
-    
 
     function parseTime(timeStr) {
         const timeParts = timeStr.split(':').map(Number);
         return timeParts[0] * 60 + timeParts[1];
     }
 
+    // Add the styles and keyframes on load
+    addNotificationStyles();
     // Setup interval and initial notification
     setInterval(monitorVideo, checkInterval);
     showNotification("Script Loaded");
