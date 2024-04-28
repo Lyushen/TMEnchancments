@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.024
+// @version      1.025
 // @description  This script presses the Next element that will switch to a new video when it's about to end. Tracks video progress and triggers a button click near the end, with notifications.
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -17,46 +17,54 @@
     'use strict';
 
     const checkInterval = 125; // Check every 125 ms
-    const thresholdSeconds = 3; // Trigger 5 seconds before the video ends
     const startThreshold = 3; // Start monitoring after 3 seconds of playback
-    const notificationLeadTime = 6; // Notification appears 2 seconds before the action, in milliseconds
+    const thresholdSeconds = 3; // Trigger 3 seconds before the video ends
+    const notificationLeadTime = 6; // Notification appears 3 seconds before the action
     let activeNotification = null; // To handle dynamic updates
     let lastNotificationTime = -1; // Time at which the last notification was shown
-    let lastSecondNotified = -1; // Last second for which a notification was shown
 
     function monitorVideo() {
         const videoElement = document.querySelector('[role="slider"][data-purpose="video-progress-bar"]');
         if (!videoElement) return;
-
+    
         const ariaValueText = videoElement.getAttribute('aria-valuetext');
         if (!ariaValueText) return;
-
+    
         const parts = ariaValueText.split(' of ');
         if (parts.length !== 2) return;
-
+    
         const currentTime = parseTime(parts[0].trim());
         const totalTime = parseTime(parts[1].trim());
-
-        // Check if it's time to start monitoring the video playback
+    
         if (currentTime < startThreshold) return;
-
-        // Calculate remaining time
+    
         const remainingTime = totalTime - currentTime;
-        // Display notification at the specified lead time before the video ends
-        if (remainingTime <= (thresholdSeconds + notificationLeadTime)) {
-
-            // Check if second has changed and if we haven't already shown a notification for this second
-            if (lastSecondNotified !== currentTime) {
-                lastSecondNotified = currentTime; // Update last notified second
-
-                // Decide when to show the notification based on the remaining time
-                if (remainingTime <= 3 && lastNotificationTime !== currentTime) {  // For last 3 seconds
-                    console.log(`Notification is triggered at ${ariaValueText}`);
-                    showNotification(`Next video in ${remainingTime}`);
-                    lastNotificationTime = currentTime; // Update the time of the last notification
-                }
+    
+        // Notification logic corrected for exact timing
+        if (remainingTime === notificationLeadTime && lastNotificationTime !== currentTime) {
+            console.log(`Notification is triggered at ${ariaValueText}`);
+            showNotification(`Next video in ${remainingTime}`);
+            lastNotificationTime = currentTime;
+        }
+    
+        // Button click logic separate from notification
+        if (remainingTime <= thresholdSeconds && !button.disabled) {
+            const button = document.querySelector('[role="link"][data-purpose="go-to-next"]');
+            if (button) {
+                button.click();
+                console.log(`Button is pressed at ${ariaValueText}`);
+                button.disabled = true;
+                videoElement.lastClickTime = currentTime;
             }
         }
+    
+        // Re-enable button logic
+        const button = document.querySelector('[role="link"][data-purpose="go-to-next"]');
+        if (button && button.disabled && videoElement.lastClickTime && (currentTime - videoElement.lastClickTime >= 2)) {
+            button.disabled = false;
+            console.log(`Button is enabled to be re-pressed at ${ariaValueText}`);
+        }
+    
 
         // Trigger the button click and manage the button state based on video progress
         const button = document.querySelector('[role="link"][data-purpose="go-to-next"]');
