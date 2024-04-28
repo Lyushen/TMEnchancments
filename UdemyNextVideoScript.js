@@ -4,7 +4,11 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
+<<<<<<< HEAD
+// @version      1.029
+=======
 // @version      1.028
+>>>>>>> 29e71fd3117cf6919c9206aaa0ae4e659de12ed0
 // @description  This script presses the Next element that will switch to a new video when it's about to end. Tracks video progress and triggers a button click near the end, with notifications.
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -26,7 +30,7 @@
     function monitorVideo() {
         const videoElement = document.querySelector('[role="slider"][data-purpose="video-progress-bar"]');
         if (!videoElement) {
-            console.log('No video element found.');
+            //console.log('No video element found.');
             return;
         }
     
@@ -50,14 +54,13 @@
 
         const currentTime = parseTime(parts[0].trim());
         const totalTime = parseTime(parts[1].trim());
-    
-        if (currentTime < startThreshold) return;  // Early return if video hasn't played long enough
-
         // Calculate remaining time
         const remainingTime = totalTime - currentTime;
-    
+        
+        if (currentTime < startThreshold) return;  // Early return if video hasn't played long enough
+
         // Notification logic corrected for exact timing
-        if (remainingTime === notificationLeadTime && lastNotificationTime !== currentTime) {
+        if (remainingTime <= notificationLeadTime && lastNotificationTime !== currentTime) {
             console.log(`Notification is triggered at ${ariaValueText}`);
             showNotification(`Next video in ${remainingTime}`);
             lastNotificationTime = currentTime;
