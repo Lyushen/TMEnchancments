@@ -41,7 +41,8 @@
         if ((totalTime - currentTime) <= (thresholdSeconds + notificationLeadTime) && !videoElement.notificationShown) {
             videoElement.notificationShown = true; // Set a flag to ensure notification is shown only once
             console.log(`Notification is triggered at ${ariaValueText}`)
-            showNotification(`Next Video in ${notificationLeadTime}s`, notificationLeadTime);
+            //showNotification(`Next Video in ${notificationLeadTime}s`, notificationLeadTime);
+            countdownPopUp(3)
         }
     
         // Trigger the button click and manage the button state based on video progress
@@ -84,7 +85,7 @@
                 border: 2px solid #000;
                 border-radius: 5px;
                 padding: 10px;
-                z-index: 10001;
+                z-index: 2147483646; // Ensure high visibility
                 opacity: 0;
                 visibility: hidden;
             }
@@ -97,13 +98,22 @@
         notification.innerText = message;
         document.body.appendChild(notification);
     
-        // Setting up animation duration dynamically based on the duration argument
         notification.style.animation = `fadeInOut ${duration + 1000}ms ease-in-out`;
     
-        // Event listener to clean up after animation ends
         notification.addEventListener('animationend', () => {
             document.body.removeChild(notification);
         });
+    }
+    
+    function countdownPopUp(duration) {
+        let countdown = duration;
+        const interval = setInterval(() => {
+            showNotification(`Next video in ${countdown}`, 1000);  // Shows notification each second
+            countdown--;
+            if (countdown < 0) {
+                clearInterval(interval);
+            }
+        }, 1000);
     }
     
 
@@ -116,5 +126,5 @@
     addNotificationStyles();
     // Setup interval and initial notification
     setInterval(monitorVideo, checkInterval);
-    //showNotification("Script Loaded");
+    showNotification("Script Loaded");
 })();
