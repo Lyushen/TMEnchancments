@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         WhatsApp Number Extractor
-// @icon         https://raw.githubusercontent.com/Lyushen/TMEnchancments/Resources/whatsapp.ico
+// @icon         https://www.google.com/s2/favicons?sz=128&domain=https://whatsapp.com
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.3008
+// @version      1.3009
 // @description  Extract phone number from a specific div under 'main' in WhatsApp Web and copy to clipboard on Ctrl+Y
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -17,42 +17,48 @@
 (function() {
     'use strict';
 
-    // Create a style element for animations and append it to head
-    var style = document.createElement('style');
-    style.innerHTML = `
-        @keyframes fadeOut {
-            from { opacity: 1; }
-            to { opacity: 0; }
-        }
-
-        .message-box {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: rgba(0, 0, 0, 1);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 5px;
-            z-index: 1000;
-            font-size: 16px;
-            display: none;
-            animation: fadeOut 1s ease-in-out 1s forwards;
-        }
-    `;
-    document.head.appendChild(style);
-
-    // Function to display the message box
-    function displayMessageBox(message) {
-        var messageBox = document.createElement('div');
-        messageBox.className = 'message-box';
-        messageBox.textContent = message;
-        document.body.appendChild(messageBox);
-        messageBox.style.display = 'block'; // Make the box visible
-        setTimeout(function() {
-            document.body.removeChild(messageBox); // Remove the box after animation
-        }, 3000); // Wait for animation to complete
+// Create a style element for animations and append it to head
+var style = document.createElement('style');
+style.innerHTML = `
+    @keyframes fadeInOut {
+        0% { opacity: 0; }
+        10%, 90% { opacity: 1; }
+        100% { opacity: 0; }
     }
+
+    .message-box {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 5px;
+        z-index: 1000;
+        font-size: 16px;
+        display: none;
+        animation: fadeInOut 1s ease-in-out;
+    }
+`;
+document.head.appendChild(style);
+
+// Function to display the message box
+function displayMessageBox(message, duration = 3000) {
+    var messageBox = document.createElement('div');
+    messageBox.className = 'message-box';
+    messageBox.textContent = message;
+    document.body.appendChild(messageBox);
+    messageBox.style.display = 'block'; // Make the box visible
+
+    // Adjust animation duration to accommodate fade in, visible duration, and fade out
+    messageBox.style.animationDuration = `${(duration / 1000) + 1}s`;
+
+    // Remove the box after animation
+    messageBox.addEventListener('animationend', () => {
+        document.body.removeChild(messageBox);
+    });
+}
 
     document.addEventListener('keydown', function(e) {
         // Trigger on Ctrl+Y
