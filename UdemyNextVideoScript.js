@@ -12,7 +12,7 @@
 // @downloadURL  https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/UdemyNextVideoScript.js
 // @grant        none
 // @match        https://*.udemy.com/course/*
-// ==/UserScript==
+// ==/UserScript== 
 (function() {
     'use strict';
 
