@@ -25,20 +25,34 @@
 
     function monitorVideo() {
         const videoElement = document.querySelector('[role="slider"][data-purpose="video-progress-bar"]');
-        if (!videoElement) {console.log(`No videoElement`);return;} //return;
+        if (!videoElement) {
+            console.log('No video element found.');
+            return;
+        }
     
         const ariaValueText = videoElement.getAttribute('aria-valuetext');
-        if (!ariaValueText) {console.log(`No ariaValueText`);return;} //return;
+        if (!ariaValueText) {
+            console.log('No ariaValueText available.');
+            return;
+        }
     
         const parts = ariaValueText.split(' of ');
-        if (parts.length !== 2) {console.log(`Less than two parts`);return;} //return;
-    
+        if (parts.length !== 2) {
+            console.log('Unexpected ariaValueText format.');
+            return;
+        }
+
+        const button = document.querySelector('[role="link"][data-purpose="go-to-next"]');
+        if (!button) {
+            console.log('No next button found.');
+            return;
+        }
+
         const currentTime = parseTime(parts[0].trim());
         const totalTime = parseTime(parts[1].trim());
     
-        // Check if it's time to start monitoring the video playback
-        if (currentTime < startThreshold) return;
-    
+        if (currentTime < startThreshold) return;  // Early return if video hasn't played long enough
+
         // Calculate remaining time
         const remainingTime = totalTime - currentTime;
     
@@ -50,26 +64,19 @@
         }
     
         // Button click logic separate from notification
-        if (remainingTime <= thresholdSeconds && !button.disabled) {
-            const button = document.querySelector('[role="link"][data-purpose="go-to-next"]');
-            if (button) {
+        if (remainingTime <= thresholdSeconds) {
+            if (!button.disabled) {
                 button.click();
                 console.log(`Button is pressed at ${ariaValueText}`);
                 button.disabled = true;
                 videoElement.lastClickTime = currentTime;
+            } else if (currentTime - videoElement.lastClickTime >= 2) {
+                button.disabled = false;
+                console.log(`Button is re-enabled at ${ariaValueText}`);
             }
-        }
-    
-        // Re-enable button logic
-        const button = document.querySelector('[role="link"][data-purpose="go-to-next"]');
-        if (button && button.disabled && videoElement.lastClickTime && (currentTime - videoElement.lastClickTime >= 2)) {
-            button.disabled = false;
-            console.log(`Button is enabled to be re-pressed at ${ariaValueText}`);
-        }
-    
+        }    
 
         // Trigger the button click and manage the button state based on video progress
-        const button = document.querySelector('[role="link"][data-purpose="go-to-next"]');
         if (button) {
             // If video time is within the trigger threshold, click the button if not disabled
             if ((totalTime - currentTime) <= thresholdSeconds && !button.disabled) {
