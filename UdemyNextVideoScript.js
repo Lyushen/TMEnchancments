@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.029
+// @version      1.030
 // @description  This script presses the Next element that will switch to a new video when it's about to end. Tracks video progress and triggers a button click near the end, with notifications.
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -58,7 +58,7 @@
         // Notification logic corrected for exact timing
         if (remainingTime <= notificationLeadTime && lastNotificationTime !== currentTime) {
             console.log(`Notification is triggered at ${ariaValueText}`);
-            showNotification(`Next video in ${remainingTime}`);
+            showNotification(`Next video in ${remainingTime + 1 - (notificationLeadTime-thresholdSeconds)}`);
             lastNotificationTime = currentTime;
         }
     
@@ -128,22 +128,20 @@
             activeNotification.style.animation = 'none'; // Reset animation
     
             void activeNotification.offsetWidth; // Force reflow to reset animation
-            activeNotification.style.animation = `fadeInOut ${duration + 1000}ms ease-in-out`;
-        } else {
-            // Create new notification if none exists
-            const notification = document.createElement('div');
-            notification.className = 'notification';
-            notification.innerText = message;
-            document.body.appendChild(notification);
-            notification.style.animation = `fadeInOut ${duration + 1000}ms ease-in-out`;
-    
-            notification.addEventListener('animationend', () => {
-                document.body.removeChild(notification);
-                activeNotification = null; // Clear the reference to allow new notifications
-            });
-    
-            activeNotification = notification; // Set the active notification reference
-        }
+            activeNotification.style.animation = `fadeInOut ${0.01}ms ease-in-out`;
+        } 
+        // Create new notification if none exists
+        const notification = document.createElement('div');
+        notification.className = 'notification';
+        notification.innerText = message;
+        document.body.appendChild(notification);
+        notification.style.animation = `fadeInOut ${duration + 1000}ms ease-in-out`;
+
+        notification.addEventListener('animationend', () => {
+            document.body.removeChild(notification);
+            activeNotification = null; // Clear the reference to allow new notifications
+        });
+        activeNotification = notification; // Set the active notification reference
     }
 
     function countdownPopUp(duration) {
