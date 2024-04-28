@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.023
+// @version      1.024
 // @description  This script presses the Next element that will switch to a new video when it's about to end. Tracks video progress and triggers a button click near the end, with notifications.
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -21,6 +21,8 @@
     const startThreshold = 3; // Start monitoring after 3 seconds of playback
     const notificationLeadTime = 6; // Notification appears 2 seconds before the action, in milliseconds
     let activeNotification = null; // To handle dynamic updates
+    let lastNotificationTime = -1; // Time at which the last notification was shown
+    let lastSecondNotified = -1; // Last second for which a notification was shown
 
     function monitorVideo() {
         const videoElement = document.querySelector('[role="slider"][data-purpose="video-progress-bar"]');
@@ -38,20 +40,20 @@
         // Check if it's time to start monitoring the video playback
         if (currentTime < startThreshold) return;
 
+        // Calculate remaining time
+        const remainingTime = totalTime - currentTime;
         // Display notification at the specified lead time before the video ends
-        if ((totalTime - currentTime) <= (thresholdSeconds + notificationLeadTime)) {
-            
-            //showNotification(`Next Video in ${notificationLeadTime}s`, notificationLeadTime);
-            //showNotification(`Next video in ${remainingTime}`);
-            // Check if second has changed
-            if (lastSecond !== currentTime) {
-                lastSecond = currentTime;
-                const remainingTime = totalTime - currentTime;
+        if (remainingTime <= (thresholdSeconds + notificationLeadTime)) {
+
+            // Check if second has changed and if we haven't already shown a notification for this second
+            if (lastSecondNotified !== currentTime) {
+                lastSecondNotified = currentTime; // Update last notified second
 
                 // Decide when to show the notification based on the remaining time
-                if (remainingTime <= 3) {  // For last 3 seconds
-                    console.log(`Notification is triggered at ${ariaValueText}`)
+                if (remainingTime <= 3 && lastNotificationTime !== currentTime) {  // For last 3 seconds
+                    console.log(`Notification is triggered at ${ariaValueText}`);
                     showNotification(`Next video in ${remainingTime}`);
+                    lastNotificationTime = currentTime; // Update the time of the last notification
                 }
             }
         }
