@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         4pda Optimisations
-// @icon         https://www.google.com/s2/favicons?sz=64&domain=4pda.to
+// @icon         https://www.google.com/s2/favicons?sz=128&domain=https://4pda.to
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.00229
+// @version      1.00230
 // @description  Block specific first elements from 4pda.to
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
