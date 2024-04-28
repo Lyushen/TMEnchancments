@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.026
+// @version      1.027
 // @description  This script presses the Next element that will switch to a new video when it's about to end. Tracks video progress and triggers a button click near the end, with notifications.
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -25,19 +25,21 @@
 
     function monitorVideo() {
         const videoElement = document.querySelector('[role="slider"][data-purpose="video-progress-bar"]');
-        if (!videoElement) return;
+        if (!videoElement) {console.log(`No videoElement`);return;} //return;
     
         const ariaValueText = videoElement.getAttribute('aria-valuetext');
-        if (!ariaValueText) return;
+        if (!ariaValueText) {console.log(`No ariaValueText`);return;} //return;
     
         const parts = ariaValueText.split(' of ');
-        if (parts.length !== 2) return;
+        if (parts.length !== 2) {console.log(`Less than two parts`);return;} //return;
     
         const currentTime = parseTime(parts[0].trim());
         const totalTime = parseTime(parts[1].trim());
     
+        // Check if it's time to start monitoring the video playback
         if (currentTime < startThreshold) return;
     
+        // Calculate remaining time
         const remainingTime = totalTime - currentTime;
     
         // Notification logic corrected for exact timing
@@ -110,6 +112,7 @@
                 visibility: hidden;
             }
         `, style.sheet.cssRules.length);
+        
     }
 
     function showNotification(message, duration = 1000) {
@@ -117,9 +120,9 @@
             // Update existing notification text and restart animation
             activeNotification.innerText = message;
             activeNotification.style.animation = 'none'; // Reset animation
-            setTimeout(() => { // Timeout needed to restart CSS animation
-                activeNotification.style.animation = `fadeInOut ${duration + 1000}ms ease-in-out`;
-            }, 10);
+    
+            void activeNotification.offsetWidth; // Force reflow to reset animation
+            activeNotification.style.animation = `fadeInOut ${duration + 1000}ms ease-in-out`;
         } else {
             // Create new notification if none exists
             const notification = document.createElement('div');
