@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.033
+// @version      1.034
 // @description  This script presses the Next element that will switch to a new video when it's about to end. Tracks video progress and triggers a button click near the end, with notifications.
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -60,7 +60,7 @@
         // Notification logic corrected for exact timing
         if (remainingTime <= notificationLeadTime && lastNotificationTime !== currentTime && notificationTimer > 0) {
             console.log(`Notification is triggered at ${ariaValueText}`);
-            showNotification(`Next video in ${notificationTimer}`);
+            showNotification(`Next video in ${notificationTimer+1}`);
             lastNotificationTime = currentTime;
         }
     
