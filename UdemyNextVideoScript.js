@@ -55,10 +55,12 @@
         
         if (currentTime < startThreshold) return;  // Early return if video hasn't played long enough
 
+        // Update notification countdown, 3,2,1
+        let notificationTimer=remainingTime - (notificationLeadTime-thresholdSeconds);
         // Notification logic corrected for exact timing
-        if (remainingTime <= notificationLeadTime && lastNotificationTime !== currentTime) {
+        if (remainingTime <= notificationLeadTime && lastNotificationTime !== currentTime && notificationTimer !== 0) {
             console.log(`Notification is triggered at ${ariaValueText}`);
-            showNotification(`Next video in ${remainingTime + 1 - (notificationLeadTime-thresholdSeconds)}`);
+            showNotification(`Next video in ${notificationTimer}`);
             lastNotificationTime = currentTime;
         }
     
