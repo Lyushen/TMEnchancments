@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.039
+// @version      1.040
 // @description  This script presses the Next element that will switch to a new video when it's about to end. Tracks video progress and triggers a button click near the end, with notifications.
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -108,7 +108,7 @@
         style.sheet.insertRule(`
             .notification {
                 position: fixed;
-                top: 40%;
+                top: 80%;
                 right: 50%;
                 transform: translate(50%, -50%);
                 background: rgba(255, 255, 255, 0.9);
