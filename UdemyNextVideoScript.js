@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.036
+// @version      1.037
 // @description  This script presses the Next element that will switch to a new video when it's about to end. Tracks video progress and triggers a button click near the end, with notifications.
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -22,6 +22,7 @@
     const notificationLeadTime = 6; // Notification appears 3 seconds before the action
     let activeNotification = null; // To handle dynamic updates
     let lastNotificationTime = -1; // Time at which the last notification was shown
+    let notificationQueue = []; // Notification queue
 
     function monitorVideo() {
         const videoElement = document.querySelector('[role="slider"][data-purpose="video-progress-bar"]');
