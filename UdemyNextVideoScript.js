@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.035
+// @version      1.036
 // @description  This script presses the Next element that will switch to a new video when it's about to end. Tracks video progress and triggers a button click near the end, with notifications.
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -125,12 +125,17 @@
 
     function showNotification(message, duration = 1000) {
         const videoPopoverArea = document.querySelector('[id$="mock-vjs-control-bar-popover-area"]');
-        let activeNotification = videoPopoverArea.querySelector('.notification');
+        if (!videoPopoverArea) {
+            // If the element isn't available yet, queue the notification
+            notificationQueue.push({ message, duration });
+            return;
+        }
     
+        let activeNotification = videoPopoverArea.querySelector('.notification');
         if (activeNotification) {
             activeNotification.innerText = message;
-            activeNotification.style.animation = 'none'; // Reset animation
-            void activeNotification.offsetWidth; // Force reflow to reset animation
+            activeNotification.style.animation = 'none';
+            void activeNotification.offsetWidth;
             activeNotification.style.animation = `fadeInOut ${duration + 1000}ms ease-in-out`;
         } else {
             const notification = document.createElement('div');
@@ -141,22 +146,29 @@
     
             notification.addEventListener('animationend', () => {
                 videoPopoverArea.removeChild(notification);
-                activeNotification = null; // Clear the reference to allow new notifications
             });
-            activeNotification = notification; // Set the active notification reference
+            activeNotification = notification;
         }
     }
-
-    function countdownPopUp(duration) {
-        let countdown = duration;
-        const interval = setInterval(() => {
-            showNotification(`Next video in ${countdown}`, 1000);  // Shows notification each second
-            countdown--;
-            if (countdown < 0) {
-                clearInterval(interval);
-            }
-        }, 1000);
+    
+    function processQueue() {
+        const videoPopoverArea = document.querySelector('[id$="mock-vjs-control-bar-popover-area"]');
+        if (videoPopoverArea && notificationQueue.length > 0) {
+            notificationQueue.forEach(item => showNotification(item.message, item.duration));
+            notificationQueue = []; // Clear the queue after processing
+        }
     }
+    
+    // Setup MutationObserver to detect when the videoPopoverArea is added to the DOM
+    const observer = new MutationObserver((mutations, obs) => {
+        const videoPopoverArea = document.querySelector('[id$="mock-vjs-control-bar-popover-area"]');
+        if (videoPopoverArea) {
+            processQueue();
+            observer.disconnect(); // Optionally disconnect observer after the element is found and queue processed
+        }
+    });
+    
+    observer.observe(document.body, { childList: true, subtree: true });
 
     function parseTime(timeStr) {
         const timeParts = timeStr.split(':').map(Number);
