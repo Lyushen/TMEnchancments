@@ -1,3 +1,4 @@
+!https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/UserRulesAdblock.txt
 google.com##div[id^="eob_"]
 3dnews.ru##*:has(>a[href*="servernews.ru"])
 3dnews.ru##.relatedbox, .rbxglob
