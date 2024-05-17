@@ -76,7 +76,8 @@
         "Байкал Электроникс",
         "Mir Pay",
         "ФТС",
-        "Маркетплейс"
+        "Маркетплейс",
+        "С нуля до профи в Java"
     ];
 
     let cssRules = keywords.map(keyword => `article[class^="post"]:has(div>h2>a[title*="${keyword}"]) { display: none !important; }`).join(' ');
