@@ -77,7 +77,8 @@
         "Mir Pay",
         "ФТС",
         "Маркетплейс",
-        "С нуля до профи в Java"
+        "С нуля до профи в Java",
+        "РЖД"
     ];
 
     let cssRules = keywords.map(keyword => `article[class^="post"]:has(div>h2>a[title*="${keyword}"]) { display: none !important; }`).join(' ');
