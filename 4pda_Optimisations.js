@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.031
+// @version      1.032
 // @description  Block specific first elements from 4pda.to
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -21,7 +21,8 @@
 
     const keywordsUrl = 'https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/4pda_keywords.txt';
     const storageKey = 'storedKeywords';
-    const storageTimeKey = 'storedKeywordsTimestamp';
+    const storageETagKey = 'storedKeywordsETag';
+    const storageLastModifiedKey = 'storedKeywordsLastModified';
     const cooldownPeriod = 20 * 1000; // 20 seconds in milliseconds
 
     const applyCSSRules = (rules) => {

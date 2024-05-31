@@ -59,4 +59,3 @@ Mir Pay
 С нуля до профи в Java
 РЖД
 «2ГИС»
-Windows
