@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.032
+// @version      1.033
 // @description  Block specific first elements from 4pda.to
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -23,6 +23,7 @@
     const storageKey = 'storedKeywords';
     const storageETagKey = 'storedKeywordsETag';
     const storageLastModifiedKey = 'storedKeywordsLastModified';
+    const storageTimeKey = 'storedKeywordsTimestamp'; // Added this line
     const cooldownPeriod = 20 * 1000; // 20 seconds in milliseconds
 
     const applyCSSRules = (rules) => {
