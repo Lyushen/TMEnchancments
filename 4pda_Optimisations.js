@@ -4,13 +4,14 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.00232
+// @version      1.03
 // @description  Block specific first elements from 4pda.to
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
 // @updateURL    https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/4pda_Optimisations.js
 // @downloadURL  https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/4pda_Optimisations.js
-// @grant        none 
+// @grant        GM_getValue
+// @grant        GM_setValue
 // @match        *://4pda.to/*
 // ==/UserScript==
 //4pda.to##article[class^="post"]:has(div>h2>a[title*="HUAWEI"])
@@ -18,76 +19,10 @@
 (function() {
     'use strict';
 
-    const keywords = [
-        "Росси",
-        "россий",
-        "яндекс",
-        "Яндекс",
-        "Yandex",
-        "RuStore",
-        "рассекрети",
-        "Сбер",
-        "VK Видео",
-        "Смута",
-        "Смуты",
-        "Смуте",
-        "Слух:",
-        "Инсайд:",
-        "Инсайды",
-        "Инсайдеры:",
-        "HUAWEI",
-        "AnTuTu",
-        "Тинькофф",
-        "Главное за неделю",
-        "«МегаФон",
-        "ФАС",
-        "«Аврора",
-        "РФ",
-        "VK",
-        "MTC",
-        "Lada",
-        "МТС",
-        "Госдум",
-        "М.Видео",
-        "Трансмашхолдинг",
-        "Москвич",
-        "Р-ФОН",
-        "Минцифры",
-        "ВКонтакте",
-        "россиян",
-        "Одноклассник",
-        "«Русы против ящеров»",
-        "Госуслуг",
-        "Mинпромторг",
-        "«Лаборатория Касперского»",
-        "Рувики",
-        "«Шедеврум»",
-        "«Русы против Ящеров»",
-        "МВД",
-        "Минфин",
-        "«Русам против ящеров»",
-        "«Санёк»",
-        "Роскомнадзор",
-        "HyperOS",
-        "Sber ",
-        "QIWI",
-        "Slavania",
-        "INDIKA",
-        "Байкал Электроникс",
-        "Mir Pay",
-        "ФТС",
-        "Маркетплейс",
-        "С нуля до профи в Java",
-        "РЖД"
-    ];
-
-    let cssRules = keywords.map(keyword => `article[class^="post"]:has(div>h2>a[title*="${keyword}"]) { display: none !important; }`).join(' ');
-
-    // Additional rules
-    cssRules += `
-        article:not(:has(> div:nth-child(3))) { display: none !important; }
-        *:has(> .slider-list + .slider-list + .slider-list) { display: none !important; }
-    `;
+    const keywordsUrl = 'https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/4pda_keywords.txt';
+    const storageKey = 'storedKeywords';
+    const storageTimeKey = 'storedKeywordsTimestamp';
+    const cooldownPeriod = 60 * 1000; // 1 minute in milliseconds
 
     const applyCSSRules = (rules) => {
         if (!document.getElementById("customTampermonkeyStyles")) {
@@ -97,8 +32,6 @@
             document.head.appendChild(blockStyle);
         }
     };
-
-    applyCSSRules(cssRules);
 
     const hideArticles = () => {
         const articles = document.querySelectorAll('article[class^="post"]');
@@ -120,7 +53,6 @@
             }
         });
         
-        // New loop to hide <lek> elements with <a> tags having target="_blank"
         const lekElements = document.querySelectorAll('lek');
         lekElements.forEach(lek => {
             const aTag = lek.querySelector('a[target="_blank"]');
@@ -129,7 +61,6 @@
             }
         });
 
-        // New pattern for hiding specific links with `utm_source`
         const promotionalLinks = document.querySelectorAll('a[href*="utm_source"]');
         promotionalLinks.forEach(link => {
             let parentElement = link.closest('li');
@@ -138,19 +69,56 @@
             }
         });
 
-        // New loop to directly hide <a> elements with role="button"
         const buttonRoleLinks = document.querySelectorAll('a[role="button"]');
         buttonRoleLinks.forEach(link => {
-            link.style.display = 'none';  // Directly hiding the <a> element itself
+            link.style.display = 'none';
         });
     };
 
-    // High-frequency polling
     const pollDOM = (callback) => {
         callback();
-        requestAnimationFrame(() => pollDOM(callback));
+        requestAnimationFrame(() => setTimeout(() => pollDOM(callback), 1000)); // Check once per second
     };
 
-    pollDOM(hideArticles);
+    const loadKeywords = async () => {
+        try {
+            const response = await fetch(keywordsUrl);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch keywords from ${keywordsUrl}`);
+            }
+            const text = await response.text();
+            const keywords = text.split('\n').map(keyword => keyword.trim()).filter(keyword => keyword);
 
+            GM_setValue(storageKey, keywords);
+            GM_setValue(storageTimeKey, Date.now());
+
+            return keywords;
+        } catch (error) {
+            console.error('Error loading keywords:', error);
+            return null;
+        }
+    };
+
+    const initialize = async () => {
+        let keywords = GM_getValue(storageKey, null);
+        const lastUpdateTime = GM_getValue(storageTimeKey, 0);
+
+        if (!keywords || Date.now() - lastUpdateTime > cooldownPeriod) {
+            keywords = await loadKeywords();
+        }
+
+        if (keywords) {
+            let cssRules = keywords.map(keyword => `article[class^="post"]:has(div>h2>a[title*="${keyword}"]) { display: none !important; }`).join(' ');
+
+            cssRules += `
+                article:not(:has(> div:nth-child(3))) { display: none !important; }
+                *:has(> .slider-list + .slider-list + .slider-list) { display: none !important; }
+            `;
+
+            applyCSSRules(cssRules);
+            pollDOM(hideArticles);
+        }
+    };
+
+    initialize();
 })();
