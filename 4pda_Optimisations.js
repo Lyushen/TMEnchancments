@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.03
+// @version      1.031
 // @description  Block specific first elements from 4pda.to
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -22,7 +22,7 @@
     const keywordsUrl = 'https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/4pda_keywords.txt';
     const storageKey = 'storedKeywords';
     const storageTimeKey = 'storedKeywordsTimestamp';
-    const cooldownPeriod = 60 * 1000; // 1 minute in milliseconds
+    const cooldownPeriod = 20 * 1000; // 20 seconds in milliseconds
 
     const applyCSSRules = (rules) => {
         if (!document.getElementById("customTampermonkeyStyles")) {
@@ -80,31 +80,49 @@
         requestAnimationFrame(() => setTimeout(() => pollDOM(callback), 1000)); // Check once per second
     };
 
-    const loadKeywords = async () => {
-        try {
-            const response = await fetch(keywordsUrl);
-            if (!response.ok) {
-                throw new Error(`Failed to fetch keywords from ${keywordsUrl}`);
-            }
-            const text = await response.text();
-            const keywords = text.split('\n').map(keyword => keyword.trim()).filter(keyword => keyword);
+    const fetchKeywords = async (ifNoneMatch, ifModifiedSince) => {
+        const headers = {};
+        if (ifNoneMatch) headers['If-None-Match'] = ifNoneMatch;
+        if (ifModifiedSince) headers['If-Modified-Since'] = ifModifiedSince;
 
-            GM_setValue(storageKey, keywords);
-            GM_setValue(storageTimeKey, Date.now());
-
-            return keywords;
-        } catch (error) {
-            console.error('Error loading keywords:', error);
-            return null;
+        const response = await fetch(keywordsUrl, { method: 'GET', headers: headers });
+        if (response.status === 304) {
+            return { keywords: null, eTag: ifNoneMatch, lastModified: ifModifiedSince };
         }
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch keywords from ${keywordsUrl}`);
+        }
+
+        const text = await response.text();
+        const keywords = text.split('\n').map(keyword => keyword.trim()).filter(keyword => keyword);
+
+        const eTag = response.headers.get('ETag');
+        const lastModified = response.headers.get('Last-Modified');
+
+        return { keywords, eTag, lastModified };
     };
 
     const initialize = async () => {
         let keywords = GM_getValue(storageKey, null);
+        const lastETag = GM_getValue(storageETagKey, null);
+        const lastModified = GM_getValue(storageLastModifiedKey, null);
         const lastUpdateTime = GM_getValue(storageTimeKey, 0);
 
         if (!keywords || Date.now() - lastUpdateTime > cooldownPeriod) {
-            keywords = await loadKeywords();
+            try {
+                const { keywords: newKeywords, eTag, lastModified } = await fetchKeywords(lastETag, lastModified);
+
+                if (newKeywords) {
+                    keywords = newKeywords;
+                    GM_setValue(storageKey, keywords);
+                    GM_setValue(storageETagKey, eTag);
+                    GM_setValue(storageLastModifiedKey, lastModified);
+                    GM_setValue(storageTimeKey, Date.now());
+                }
+            } catch (error) {
+                console.error('Error loading keywords:', error);
+            }
         }
 
         if (keywords) {
