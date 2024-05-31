@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         Embed YouTube Extractor
-// @icon         https://www.google.com/s2/favicons?sz=64&domain=youtube.com
+// @icon         https://www.google.com/s2/favicons?sz=128&domain=https://youtube.com
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.0010
+// @version      1.0011
 // @description  Transform YouTube embed URL to watch URL on keypress Ctrl+B
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues

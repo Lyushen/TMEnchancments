@@ -1,4 +1,4 @@
-agoogle.com##div[id^="eob_"]
+google.com##div[id^="eob_"]
 3dnews.ru##*:has(>a[href*="servernews.ru"])
 3dnews.ru##.relatedbox, .rbxglob
 3dnews.ru##.entry-meta

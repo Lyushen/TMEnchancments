@@ -1,6 +1,6 @@
 // ==UserScript==
-// @name         Theory Test Ireland Enhancements
-// @icon         https://www.google.com/s2/favicons?sz=64&domain=theorytestireland.org
+// @name         Theory Test Ireland Enhancements (outdated)
+// @icon         https://www.google.com/s2/favicons?sz=128&domain=https://theorytestireland.org
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU

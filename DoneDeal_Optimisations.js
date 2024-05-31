@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         DoneDeal Optimisations
-// @icon         https://www.google.com/s2/favicons?sz=64&domain=donedeal.ie
+// @icon         https://www.google.com/s2/favicons?sz=128&domain=https://donedeal.ie
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.000
+// @version      1.001
 // @description  For car search: Convert (miles) mileage to km, and (£) price to €, so that the list contains consistent information, and item page
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
