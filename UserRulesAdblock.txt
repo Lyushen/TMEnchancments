@@ -54,7 +54,6 @@ theorytest-ireland.com##div.row:style(margin: 0px !important;)
 theorytest-ireland.com##img[class="d-inline-block align-text-top"]:style(width: 50px !important;)
 theorytest-ireland.com##button[data-bs-target="#navbarNav"]:style(padding: 0px !important;)
 theorytest-ireland.com##center:has(span.advert)
-4pda.to##.menu-brands
 ||*yandex*^$third-party
 ||yadro.ru^
 allgames.zone##body > div.wrapper.coll-container:style(max-width: none !important;)

@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.03400
+// @version      1.03401
 // @description  Block specific first elements from 4pda.to
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -113,6 +113,7 @@
             cssRules += `
                 article:not(:has(> div:nth-child(3))) { display: none !important; }
                 *:has(> .slider-list + .slider-list + .slider-list) { display: none !important; }
+                .menu-brands { display: none !important; }  /* Additional rule to block elements with class "menu-brands" */
             `;
 
             applyCSSRules(cssRules);
