@@ -64,3 +64,4 @@ amazon.*##[class*="AdHolder"]
 amazon.*##.s-result-item.AdHolder[data-asin]
 rtings.com##.app-sticky_header-content
 account.mygovid.ie##.mygovid-overlay
+chatgpt.com##div > span:has-text(ChatGPT can make mistakes. Check important info.)
