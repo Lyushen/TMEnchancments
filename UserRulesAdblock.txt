@@ -58,8 +58,10 @@ theorytest-ireland.com##center:has(span.advert)
 ||yadro.ru^
 allgames.zone##body > div.wrapper.coll-container:style(max-width: none !important;)
 allgames.zone##body > div.wrapper.coll-container:style(margin-top: 0 !important;)
+account.mygovid.ie##.mygovid-overlay
 allgames.zone##.footer
 amazon.*##[class*="AdHolder"]
 amazon.*##.s-result-item.AdHolder[data-asin]
 rtings.com##.app-sticky_header-content
 account.mygovid.ie##.mygovid-overlay
+chatgpt.com##div > span:has-text(ChatGPT can make mistakes. Check important info.)
