@@ -58,7 +58,8 @@ theorytest-ireland.com##center:has(span.advert)
 ||yadro.ru^
 allgames.zone##body > div.wrapper.coll-container:style(max-width: none !important;)
 allgames.zone##body > div.wrapper.coll-container:style(margin-top: 0 !important;)
-account.mygovid.ie##.mygovid-overlay
+account.mygovid.ie##div.mygovid-overlay
+account.mygovid.ie##div.mygovid-overlay:nth-child(n)
 allgames.zone##.footer
 amazon.*##[class*="AdHolder"]
 amazon.*##.s-result-item.AdHolder[data-asin]
