@@ -68,3 +68,4 @@ account.mygovid.ie##.mygovid-overlay
 chatgpt.com##div > span:has-text(ChatGPT can make mistakes. Check important info.)
 4pda.to##.yt-p-content
 4pda.to##.yt-p-gradient
+rustorka.com##+js(set-constant, document.write, noopFunc)
