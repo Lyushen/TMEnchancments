@@ -82,3 +82,6 @@ Aqara.ru
 Rutube
 «Базальт СПО
 В Москве
+ВТБ
+Mail.ru
+РКН
