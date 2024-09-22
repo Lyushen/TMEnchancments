@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.03401
+// @version      1.03412
 // @description  Block specific first elements from 4pda.to
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -75,6 +75,16 @@
         });
     };
 
+    const convertYouTubeOverlayToIframe = () => {
+        const ytOverlays = document.querySelectorAll('a.yt-p-overlay[data-yt-player]');
+        ytOverlays.forEach(overlay => {
+            const iframeHTML = overlay.getAttribute('data-yt-player');
+            if (iframeHTML) {
+                overlay.outerHTML = iframeHTML;
+            }
+        });
+    };
+
     const pollDOM = (callback) => {
         callback();
         requestAnimationFrame(() => setTimeout(() => pollDOM(callback), 1000)); // Check once per second
@@ -117,7 +127,10 @@
             `;
 
             applyCSSRules(cssRules);
-            pollDOM(hideArticles);
+            pollDOM(() => {
+                hideArticles();
+                convertYouTubeOverlayToIframe();
+            });
         }
     };
 
