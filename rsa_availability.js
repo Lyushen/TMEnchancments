@@ -211,12 +211,17 @@ function sendTeamsMessage(message) {
             await clickByXPath('//div/div/div/div/button/span/span', !instantPressing);
             await clickByXPath('//*[@id="button3"]/span/div/div[2]', !instantPressing);
             await clickByXPath('//button[5]/strong', !instantPressing);
-            updateStatus(`[${new Date().toLocaleString('ga-IE')}] Clicking button 12 times`);
 
-            for (let i = 0; i < 10; i++) {
-                await clickByXPath('//div[12]/div/div/div/button[2]', instantPressing);
+            updateStatus(`[${new Date().toLocaleString('ga-IE')}] Clicking button 12 times`);
+            // Wait for and find the button based on attributes
+            const button = await waitForElement(() => document.querySelector('button[aria-label="Zoom out"][title="Zoom out"]'), 5000);
+            if (!button) {
+                updateStatus(`${new Date().toLocaleString('ga-IE')}] Zoom out button not found within the timeout period.`);
             }
-            await clickByXPath('//div[12]/div/div/div/button[2]', !instantPressing);
+            for (let i = 0; i < 10; i++) {
+                button.click();
+            }
+            await button.click();
             updateStatus(`[${new Date().toLocaleString('ga-IE')}] Finished navigation to the map.`);
             await checkAvailabilityAndPlaySound();
         } catch (error) {
