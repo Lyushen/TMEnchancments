@@ -14,6 +14,7 @@
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_xmlhttpRequest
+// @connect      webhook.office.com
 // ==/UserScript==
 
 (function() {
