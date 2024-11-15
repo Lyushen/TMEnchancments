@@ -2,7 +2,7 @@
 // @name         RSA Availability Checker
 // @namespace    http://tampermonkey.net/
 // @icon         https://www.google.com/s2/favicons?sz=128&domain=https://rsa.ie
-// @version      1.332
+// @version      1.333
 // @description  Automatically navigates through rsa.ie and myroadsafety.rsa.ie to check availability slots.
 // @author       Lyushen
 // @license      GNU
@@ -229,11 +229,7 @@ function sendTeamsMessage(message) {
             console.error(error);
         }
     }
-
-
-    async function checkAvailabilityAndPlaySound() {
-    updateStatus(`[${new Date().toLocaleString('ga-IE')}] Starting availability check...`);
-
+  
     // Helper function to wait for an element by selector
     async function waitForElement(selector, timeout = 30000) {
         return new Promise((resolve, reject) => {
@@ -255,6 +251,8 @@ function sendTeamsMessage(message) {
         });
     }
 
+    async function checkAvailabilityAndPlaySound() {
+    updateStatus(`[${new Date().toLocaleString('ga-IE')}] Starting availability check...`);
     try {
         updateStatus(`[${new Date().toLocaleString('ga-IE')}] Waiting for app-slot-list-viewContainer...`);
         const container = await waitForElement("div.app-slot-list-viewContainer", 30000);
