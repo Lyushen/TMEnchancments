@@ -211,18 +211,26 @@ function sendTeamsMessage(message) {
             await clickByXPath('//div/div/div/div/button/span/span', !instantPressing);
             await clickByXPath('//*[@id="button3"]/span/div/div[2]', !instantPressing);
             await clickByXPath('//button[5]/strong', !instantPressing);
-
+    
             updateStatus(`[${new Date().toLocaleString('ga-IE')}] Clicking button 12 times`);
+    
             // Wait for and find the button based on attributes
-            const button = await waitForElement(() => document.querySelector('button[aria-label="Zoom out"][title="Zoom out"]'), 5000);
+            const button = await waitForElement('button[aria-label="Zoom out"][title="Zoom out"]', 10000);
+    
             if (!button) {
                 updateStatus(`${new Date().toLocaleString('ga-IE')}] Zoom out button not found within the timeout period.`);
+                return; // Stop further execution
             }
+    
+            // Ensure the button is interactable
+            await delay(500); // Small delay to ensure readiness
+    
+            // Click the button 10 times
             for (let i = 0; i < 10; i++) {
                 button.click();
                 await delay(50); // Add a short delay between clicks
             }
-            await button.click();
+    
             updateStatus(`[${new Date().toLocaleString('ga-IE')}] Finished navigation to the map.`);
             await checkAvailabilityAndPlaySound();
         } catch (error) {
@@ -230,17 +238,17 @@ function sendTeamsMessage(message) {
             console.error(error);
         }
     }
-
+    
     function delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
-  
+    
     // Helper function to wait for an element by selector
     async function waitForElement(selector, timeout = 30000) {
         return new Promise((resolve, reject) => {
             const interval = 500;
             const endTime = Date.now() + timeout;
-
+    
             const checkForElement = () => {
                 const element = document.querySelector(selector);
                 if (element) {
@@ -251,10 +259,11 @@ function sendTeamsMessage(message) {
                     setTimeout(checkForElement, interval);
                 }
             };
-
+    
             checkForElement();
         });
     }
+    
 
     async function checkAvailabilityAndPlaySound() {
     updateStatus(`[${new Date().toLocaleString('ga-IE')}] Starting availability check...`);
