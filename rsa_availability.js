@@ -2,7 +2,7 @@
 // @name         RSA Availability Checker
 // @namespace    http://tampermonkey.net/
 // @icon         https://www.google.com/s2/favicons?sz=128&domain=https://rsa.ie
-// @version      1.331
+// @version      1.332
 // @description  Automatically navigates through rsa.ie and myroadsafety.rsa.ie to check availability slots.
 // @author       Lyushen
 // @license      GNU
@@ -117,7 +117,7 @@ function sendTeamsMessage(message) {
 
     const statusOverlay = document.createElement('div');
     statusOverlay.style.position = 'fixed';
-    statusOverlay.style.top = '0'; // Change bottom to top statusOverlay.style.bottom = '0';
+    statusOverlay.style.bottom = '0'; // Change bottom to top statusOverlay.style.top = '0'; 
     statusOverlay.style.left = '0';
     statusOverlay.style.width = '100%';
     statusOverlay.style.maxHeight = '200px';
