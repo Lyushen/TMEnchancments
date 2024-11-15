@@ -2,7 +2,7 @@
 // @name         RSA Availability Checker
 // @namespace    http://tampermonkey.net/
 // @icon         https://www.google.com/s2/favicons?sz=128&domain=https://rsa.ie
-// @version      1.339
+// @version      1.340
 // @description  Automatically navigates through rsa.ie and myroadsafety.rsa.ie to check availability slots.
 // @author       Lyushen
 // @license      GNU
@@ -26,17 +26,25 @@
     console.log(`[${new Date().toISOString()}] Script started...`);
     
     function getTeamsWebhookUrl() {
-        let url = GM_getValue('teamsWebhookUrl', '');
-        if (url) {
-            console.log(`[${new Date().toISOString()}] Teams Webhook URL Received.`);
-            return url;
+    let url = GM_getValue('teamsWebhookUrl', '');
+    if (url) {
+        console.log(`[${new Date().toISOString()}] Teams Webhook URL Received.`);
+        return url;
+    } else {
+        // Prompt the user for the URL if not found
+        const userInput = prompt("Enter your Microsoft Teams Webhook URL:");
+        if (userInput) {
+            GM_setValue('teamsWebhookUrl', userInput);
+            console.log(`[${new Date().toISOString()}] Teams Webhook URL Set.`);
+            return userInput;
         } else {
-            // Set a default empty value if the URL is not found
+            console.log(`[${new Date().toISOString()}] Teams Webhook URL Not Provided. Defaulting to empty.`);
             const defaultUrl = '';
             GM_setValue('teamsWebhookUrl', defaultUrl);
             return defaultUrl;
         }
     }
+}
     function sendTeamsMessage(message) {
         try {
             // Retrieve the webhook URL
