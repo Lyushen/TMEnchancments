@@ -2,7 +2,7 @@
 // @name         RSA Availability Checker
 // @namespace    http://tampermonkey.net/
 // @icon         https://www.google.com/s2/favicons?sz=128&domain=https://rsa.ie
-// @version      1.335
+// @version      1.337
 // @description  Automatically navigates through rsa.ie and myroadsafety.rsa.ie to check availability slots.
 // @author       Lyushen
 // @license      GNU
@@ -23,17 +23,12 @@
 
 (function () {
     'use strict';
-
-    console.log(`[${new Date().toLocaleString('ga-IE')}] Script started...`);
-
-    // Configuration parameter for instant pressing
-    const instantPressing = true; // Set to true for instant pressing, false for delays between presses
-
-    // Helper function to get the Teams webhook URL from Tampermonkey storage
+    console.log(`[${new Date().toUTCString()}] Script started...`);
+    
     function getTeamsWebhookUrl() {
         let url = GM_getValue('teamsWebhookUrl', '');
         if (url) {
-            console.log(`[${new Date().toLocaleString('ga-IE')}] Teams Webhook URL Received.`);
+            console.log(`[${new Date().toUTCString()}] Teams Webhook URL Received.`);
             return url;
         } else {
             // Set a default empty value if the URL is not found
@@ -42,45 +37,42 @@
             return defaultUrl;
         }
     }
+    function sendTeamsMessage(message) {
+        try {
+            // Retrieve the webhook URL
+            const webhookUrl = getTeamsWebhookUrl();
 
-function sendTeamsMessage(message) {
-    try {
-        // Retrieve the webhook URL
-        const webhookUrl = getTeamsWebhookUrl();
-
-        // Check if webhook URL is set
-        if (!webhookUrl) {
-            updateStatus(`[${new Date().toLocaleString('ga-IE')}] Teams webhook URL is not set. Please set it in the Tampermonkey script settings.`);
-            return;
-        }
-
-        // Send the message using GM_xmlhttpRequest
-        GM_xmlhttpRequest({
-            method: 'POST',
-            url: webhookUrl,
-            headers: { 'Content-Type': 'application/json' },
-            data: JSON.stringify({ text: message }),
-            onload: (response) => {
-                if (response.status === 200) {
-                    updateStatus(`[${new Date().toLocaleString('ga-IE')}] Message sent to Teams successfully.`);
-                } else {
-                    updateStatus(`[${new Date().toLocaleString('ga-IE')}] Error sending message to Teams: ${response.status} - ${response.statusText}`);
-                }
-            },
-            onerror: (error) => {
-                const errorMessage = error && error.message ? error.message : JSON.stringify(error);
-                updateStatus(`[${new Date().toLocaleString('ga-IE')}] Error sending message to Teams: ${errorMessage}`);
-                console.error('Detailed error:', error); // Log the entire error for debugging
+            // Check if webhook URL is set
+            if (!webhookUrl) {
+                updateStatus(`[${new Date().toUTCString()}] Teams webhook URL is not set. Please set it in the Tampermonkey script settings.`);
+                return;
             }
-        });
-    } catch (error) {
-        // Catch unexpected errors
-        updateStatus(`[${new Date().toLocaleString('ga-IE')}] Unexpected error sending message to Teams: ${error.message}`);
-    }
-}
 
-    // Helper function to wait for an element by XPath
-    async function waitForElementByXPath(xpath, timeout = 10000) {
+            // Send the message using GM_xmlhttpRequest
+            GM_xmlhttpRequest({
+                method: 'POST',
+                url: webhookUrl,
+                headers: { 'Content-Type': 'application/json' },
+                data: JSON.stringify({ text: message }),
+                onload: (response) => {
+                    if (response.status === 200) {
+                        updateStatus(`[${new Date().toUTCString()}] Message sent to Teams successfully.`);
+                    } else {
+                        updateStatus(`[${new Date().toUTCString()}] Error sending message to Teams: ${response.status} - ${response.statusText}`);
+                    }
+                },
+                onerror: (error) => {
+                    const errorMessage = error && error.message ? error.message : JSON.stringify(error);
+                    updateStatus(`[${new Date().toUTCString()}] Error sending message to Teams: ${errorMessage}`);
+                    console.error('Detailed error:', error); // Log the entire error for debugging
+                }
+            });
+        } catch (error) {
+            // Catch unexpected errors
+            updateStatus(`[${new Date().toUTCString()}] Unexpected error sending message to Teams: ${error.message}`);
+        }
+    }
+    async function waitForElementByXPath(xpath, timeout = 15000) {
         return new Promise((resolve, reject) => {
             const interval = 500;
             const endTime = Date.now() + timeout;
@@ -90,7 +82,7 @@ function sendTeamsMessage(message) {
                 if (element) {
                     resolve(element);
                 } else if (Date.now() > endTime) {
-                    reject(new Error(`[${new Date().toLocaleString('ga-IE')}] Element with XPath "${xpath}" not found within ${timeout}ms.`));
+                    reject(new Error(`[${new Date().toUTCString()}] Element with XPath "${xpath}" not found within ${timeout}ms.`));
                 } else {
                     setTimeout(checkForElement, interval);
                 }
@@ -99,8 +91,6 @@ function sendTeamsMessage(message) {
             checkForElement();
         });
     }
-
-    // Helper function to click an element by XPath
     async function clickByXPath(xpath, instant = false) {
         try {
             const element = await waitForElementByXPath(xpath);
@@ -108,13 +98,14 @@ function sendTeamsMessage(message) {
                 await new Promise(resolve => setTimeout(resolve, Math.floor(Math.random() * 1000) + 1000)); // Random wait between 1-2 seconds
             }
             element.click();
-            console.log(`[${new Date().toLocaleString('ga-IE')}] Clicked element with XPath: ${xpath}`);
+            console.log(`[${new Date().toUTCString()}] Clicked element with XPath: ${xpath}`);
         } catch (error) {
-            console.error(`[${new Date().toLocaleString('ga-IE')}] Error:`, error);
-            updateStatus(`[${new Date().toLocaleString('ga-IE')}] Error: ${error.message}`);
+            console.error(`[${new Date().toUTCString()}] Error:`, error);
+            updateStatus(`[${new Date().toUTCString()}] Error: ${error.message}`);
         }
     }
 
+    const instantPressing = true;
     const statusOverlay = document.createElement('div');
     statusOverlay.style.position = 'fixed';
     statusOverlay.style.bottom = '0'; // Change bottom to top statusOverlay.style.top = '0'; 
@@ -128,38 +119,24 @@ function sendTeamsMessage(message) {
     statusOverlay.style.zIndex = '9999';
     statusOverlay.style.overflowY = 'auto';
     document.body.appendChild(statusOverlay);
-
     const logEntries = [];
-
-    // Function to update the status overlay
     function updateStatus(message) {
-        // Add the message to the log entries
         logEntries.push(message);
-        // Keep only the last 10 entries
-/*         if (logEntries.length > 10) {
-            logEntries.shift();
-        } */
-        // Update the status overlay content
         statusOverlay.innerHTML = logEntries.join('<br>');
-        // Scroll to the bottom of the overlay
         statusOverlay.scrollTop = statusOverlay.scrollHeight;
-        // Log the message to the console
         console.log(message);
     }
-
-    // Main loop
     async function mainLoop() {
         let availabilityFound = false;
-
         do {
             if (stopMainLoop) {
-                updateStatus(`[${new Date().toLocaleString('ga-IE')}] Stopping main loop as login page was detected.`);
+                updateStatus(`[${new Date().toUTCString()}] Stopping main loop as login page was detected.`);
                 return; // Exit the main loop
             }
             await detectAndHandleStatus();
             availabilityFound = await checkAvailabilityAndPlaySound();
             if (!availabilityFound) {
-                updateStatus(`[${new Date().toLocaleString('ga-IE')}] No availability found. Refreshing in 10 seconds...`);
+                updateStatus(`[${new Date().toUTCString()}] No availability found. Refreshing in 10 seconds...`);
                 await new Promise(resolve => setTimeout(resolve, 10000));
             }
         } while (!availabilityFound);
@@ -168,18 +145,17 @@ function sendTeamsMessage(message) {
     let isWaitingForLogin = false; // Prevent re-execution of the login logic
     let stopMainLoop = false; // Flag to stop the main loop if login is detected
 
-
     async function detectAndHandleStatus() {
         try {
             if (window.location.hostname === "rsaie.queue-it.net") {
-                updateStatus(`[${new Date().toLocaleString('ga-IE')}] Detected queue-it.net redirection page. Waiting for confirm button...`);
+                updateStatus(`[${new Date().toUTCString()}] Detected queue-it.net redirection page. Waiting for confirm button...`);
                 await waitForElementByXPath('//*[@id="buttonConfirmRedirect"]/span', 30000)
                     .then((button) => {
-                    updateStatus(`[${new Date().toLocaleString('ga-IE')}] Confirm button found, clicking it.`);
+                    updateStatus(`[${new Date().toUTCString()}] Confirm button found, clicking it.`);
                     button.click();
                 })
                     .catch(() => {
-                    updateStatus(`[${new Date().toLocaleString('ga-IE')}] Confirm button not found, waiting for automatic redirection.`);
+                    updateStatus(`[${new Date().toUTCString()}] Confirm button not found, waiting for automatic redirection.`);
                 });
             } else if (window.location.hostname === "myroadsafety.rsa.ie" && !window.location.href.includes("/portal/my-goals")) {
                 if (window.location.href.includes("/home/login")) {
@@ -187,20 +163,20 @@ function sendTeamsMessage(message) {
                     if (!isWaitingForLogin) {
                         isWaitingForLogin = true; // Set flag to avoid re-execution
                         stopMainLoop = true; // Stop the main loop
-                        updateStatus(`[${new Date().toLocaleString('ga-IE')}] Redirected to login page. Sending message to Teams.`);
-                        await sendTeamsMessage(`[${new Date().toLocaleString('ga-IE')}] Please login.`);
+                        updateStatus(`[${new Date().toUTCString()}] Redirected to login page. Sending message to Teams.`);
+                        await sendTeamsMessage(`[${new Date().toUTCString()}] Please login.`);
                         return; // Stop further execution
                     }
                 } else {
-                    updateStatus(`[${new Date().toLocaleString('ga-IE')}] Navigating to my-goals page.`);
+                    updateStatus(`[${new Date().toUTCString()}] Navigating to my-goals page.`);
                     window.location.href = "https://myroadsafety.rsa.ie/portal/my-goals";
                 }
             } else if (window.location.href.includes("https://myroadsafety.rsa.ie/portal/my-goals")) {
-                updateStatus(`[${new Date().toLocaleString('ga-IE')}] Detected my-goals page, starting sequence of button clicks.`);
+                updateStatus(`[${new Date().toUTCString()}] Detected my-goals page, starting sequence of button clicks.`);
                 await handleMyGoalsPage();
             }
         } catch (error) {
-            updateStatus(`[${new Date().toLocaleString('ga-IE')}] Error: ${error.message}`);
+            updateStatus(`[${new Date().toUTCString()}] Error: ${error.message}`);
             console.error(error);
         }
     }
@@ -211,90 +187,71 @@ function sendTeamsMessage(message) {
             await clickByXPath('//div/div/div/div/button/span/span', !instantPressing);
             await clickByXPath('//*[@id="button3"]/span/div/div[2]', !instantPressing);
             await clickByXPath('//button[5]/strong', !instantPressing);
-    
-            updateStatus(`[${new Date().toLocaleString('ga-IE')}] Clicking button 12 times`);
-    
+            updateStatus(`[${new Date().toUTCString()}] Clicking button 10 times`);
             // Wait for and find the button based on attributes
-            const button = await waitForElement('button[aria-label="Zoom out"][title="Zoom out"]', 10000);
-    
-            if (!button) {
+            const zoomout_button = await waitForElement('button[aria-label="Zoom out"][title="Zoom out"]', 10000);
+            if (!zoomout_button) {
                 updateStatus(`${new Date().toLocaleString('ga-IE')}] Zoom out button not found within the timeout period.`);
                 return; // Stop further execution
             }
-    
-            // Ensure the button is interactable
-            await delay(500); // Small delay to ensure readiness
-    
-            // Click the button 10 times
+            await delay(500);
             for (let i = 0; i < 10; i++) {
-                button.click();
-                await delay(50); // Add a short delay between clicks
+                zoomout_button.click();
+                await delay(5);
             }
-    
-            updateStatus(`[${new Date().toLocaleString('ga-IE')}] Finished navigation to the map.`);
+            updateStatus(`[${new Date().toUTCString()}] Finished navigation to the map.`);
             await checkAvailabilityAndPlaySound();
         } catch (error) {
-            updateStatus(`[${new Date().toLocaleString('ga-IE')}] Error during button click sequence: ${error.message}`);
+            updateStatus(`[${new Date().toUTCString()}] Error during button click sequence: ${error.message}`);
             console.error(error);
         }
     }
-    
     function delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
-    
-    // Helper function to wait for an element by selector
     async function waitForElement(selector, timeout = 30000) {
         return new Promise((resolve, reject) => {
             const interval = 500;
             const endTime = Date.now() + timeout;
-    
             const checkForElement = () => {
                 const element = document.querySelector(selector);
                 if (element) {
                     resolve(element);
                 } else if (Date.now() > endTime) {
-                    reject(new Error(`[${new Date().toLocaleString('ga-IE')}] Element with selector "${selector}" not found within ${timeout}ms.`));
+                    reject(new Error(`[${new Date().toUTCString()}] Element with selector "${selector}" not found within ${timeout}ms.`));
                 } else {
                     setTimeout(checkForElement, interval);
                 }
             };
-    
             checkForElement();
         });
     }
-    
-
     async function checkAvailabilityAndPlaySound() {
-    updateStatus(`[${new Date().toLocaleString('ga-IE')}] Starting availability check...`);
+    updateStatus(`[${new Date().toUTCString()}] Starting availability check...`);
     try {
-        updateStatus(`[${new Date().toLocaleString('ga-IE')}] Waiting for app-slot-list-viewContainer...`);
+        updateStatus(`[${new Date().toUTCString()}] Waiting for app-slot-list-viewContainer...`);
         const container = await waitForElement("div.app-slot-list-viewContainer", 30000);
-        updateStatus(`[${new Date().toLocaleString('ga-IE')}] app-slot-list-viewContainer found`);
+        updateStatus(`[${new Date().toUTCString()}] app-slot-list-viewContainer found`);
 
-        updateStatus(`[${new Date().toLocaleString('ga-IE')}] Waiting for swiper-wrapper...`);
+        updateStatus(`[${new Date().toUTCString()}] Waiting for swiper-wrapper...`);
         const swiperWrapper = await waitForElement(".swiper-wrapper", 30000);
-        updateStatus(`[${new Date().toLocaleString('ga-IE')}] swiper-wrapper found`);
+        updateStatus(`[${new Date().toUTCString()}] swiper-wrapper found`);
 
         let availabilityFound = false;
         let availabilityTexts = [];
         let noAvailabilityCount = 0;
 
-        // Wait until slides are fully loaded
         const maxAttempts = 10;
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
-            updateStatus(`[${new Date().toLocaleString('ga-IE')}] Checking slides (Attempt ${attempt + 1}/${maxAttempts})...`);
-
+            updateStatus(`[${new Date().toUTCString()}] Checking slides (Attempt ${attempt + 1}/${maxAttempts})...`);
             const slides = swiperWrapper.querySelectorAll("div[data-swiper-slide-index]");
-            updateStatus(`[${new Date().toLocaleString('ga-IE')}] Found ${slides.length} slides.`);
-
+            updateStatus(`[${new Date().toUTCString()}] Found ${slides.length} slides.`);
             noAvailabilityCount = 0;
             availabilityFound = false;
             availabilityTexts = [];
-
             slides.forEach((slide, index) => {
                 const availabilityText = slide.textContent.trim();
-                console.log(`[${new Date().toLocaleString('ga-IE')}] Slide ${index + 1}: Availability Text: "${availabilityText}"`);
+                /* console.log(`[${new Date().toUTCString()}] Slide ${index + 1}: Availability Text: "${availabilityText}"`); */
 
                 if (availabilityText.includes("No availability at present")) {
                     noAvailabilityCount++;
@@ -303,53 +260,52 @@ function sendTeamsMessage(message) {
                     availabilityTexts.push(availabilityText); // Collect availability text
                 }
             });
-
             if (noAvailabilityCount >= 50) {
-                updateStatus(`[${new Date().toLocaleString('ga-IE')}] Slides fully loaded.`);
+                updateStatus(`[${new Date().toUTCString()}] Slides fully loaded.`);
                 break;
             } else if (noAvailabilityCount === 0) {
-                updateStatus(`[${new Date().toLocaleString('ga-IE')}] No "No availability at present" messages found. Slides may not be fully loaded. Waiting 5 seconds...`);
-                await clickByXPath('//div[12]/div/div/div/button[2]', !instantPressing);
+                updateStatus(`[${new Date().toUTCString()}] No "No availability at present" messages found. Slides may not be fully loaded. Waiting 5 seconds...`);
+                const button = document.querySelector('button[aria-label="Zoom out"][title="Zoom out"]');
+                for (let i = 0; i < 3; i++) {
+                    button.click();
+                }
                 await new Promise(resolve => setTimeout(resolve, 5000));
             } else {
-                updateStatus(`[${new Date().toLocaleString('ga-IE')}] Slides partially loaded (${noAvailabilityCount} 'No availability' messages). Waiting 5 seconds...`);
-                await clickByXPath('//div[12]/div/div/div/button[2]', !instantPressing);
+                updateStatus(`[${new Date().toUTCString()}] Slides partially loaded (${noAvailabilityCount} 'No availability' messages). Waiting 5 seconds...`);
+                const button = document.querySelector('button[aria-label="Zoom out"][title="Zoom out"]');
+                for (let i = 0; i < 3; i++) {
+                    button.click();
+                }
                 await new Promise(resolve => setTimeout(resolve, 5000));
             }
         }
-
         if (availabilityFound) {
-            updateStatus(`[${new Date().toLocaleString('ga-IE')}] Availability detected! Playing beep...`);
+            updateStatus(`[${new Date().toUTCString()}] Availability detected! Playing beep...`);
             playFallbackBeep();
             // Send message to Teams with availability text
             sendTeamsMessage(`Availability found! Details:<br>${availabilityTexts.join('<br>')}`);
             return true;
         } else {
-            updateStatus(`[${new Date().toLocaleString('ga-IE')}] No availability found.`);
+            updateStatus(`[${new Date().toUTCString()}] No availability found.`);
             return false;
         }
     } catch (error) {
-        updateStatus(`[${new Date().toLocaleString('ga-IE')}] Error: ${error.message}`);
+        updateStatus(`[${new Date().toUTCString()}] Error: ${error.message}`);
         return false;
     }
 }
 
-    // Beep function
     function playFallbackBeep() {
         const context = new (window.AudioContext || window.webkitAudioContext)();
         const oscillator = context.createOscillator();
         const gainNode = context.createGain();
-
         oscillator.type = "square";
         oscillator.frequency.setValueAtTime(500, context.currentTime);
         gainNode.gain.setValueAtTime(0.5, context.currentTime);
-
         oscillator.connect(gainNode);
         gainNode.connect(context.destination);
-
         oscillator.start();
         setTimeout(() => oscillator.stop(), 500);
     }
-
     mainLoop();
 })();
