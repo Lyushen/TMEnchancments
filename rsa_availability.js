@@ -2,7 +2,7 @@
 // @name         RSA Availability Checker
 // @namespace    http://tampermonkey.net/
 // @icon         https://www.google.com/s2/favicons?sz=128&domain=https://rsa.ie
-// @version      1.337
+// @version      1.338
 // @description  Automatically navigates through rsa.ie and myroadsafety.rsa.ie to check availability slots.
 // @author       Lyushen
 // @license      GNU
@@ -104,6 +104,39 @@
             updateStatus(`[${new Date().toUTCString()}] Error: ${error.message}`);
         }
     }
+
+    // Wake lock functions
+    let wakeLock = null;
+
+    async function requestWakeLock() {
+        try {
+            wakeLock = await navigator.wakeLock.request('screen');
+            updateStatus(`[${new Date().toUTCString()}] Screen wake lock acquired.`);
+            wakeLock.addEventListener('release', () => {
+                updateStatus(`[${new Date().toUTCString()}] Screen wake lock released.`);
+            });
+        } catch (err) {
+            updateStatus(`[${new Date().toUTCString()}] Failed to acquire screen wake lock: ${err.message}`);
+        }
+    }
+
+    async function releaseWakeLock() {
+        if (wakeLock) {
+            try {
+                await wakeLock.release();
+                wakeLock = null;
+                updateStatus(`[${new Date().toUTCString()}] Screen wake lock manually released.`);
+            } catch (err) {
+                updateStatus(`[${new Date().toUTCString()}] Failed to release screen wake lock: ${err.message}`);
+            }
+        }
+    }
+
+    // Automatically request the wake lock at the start of the script
+    requestWakeLock();
+
+    // Clean up wake lock when the page unloads
+    window.addEventListener('beforeunload', releaseWakeLock);
 
     const instantPressing = true;
     const statusOverlay = document.createElement('div');
