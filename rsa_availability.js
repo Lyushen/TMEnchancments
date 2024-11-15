@@ -136,9 +136,9 @@ function sendTeamsMessage(message) {
         // Add the message to the log entries
         logEntries.push(message);
         // Keep only the last 10 entries
-        if (logEntries.length > 10) {
+/*         if (logEntries.length > 10) {
             logEntries.shift();
-        }
+        } */
         // Update the status overlay content
         statusOverlay.innerHTML = logEntries.join('<br>');
         // Scroll to the bottom of the overlay
@@ -220,6 +220,7 @@ function sendTeamsMessage(message) {
             }
             for (let i = 0; i < 10; i++) {
                 button.click();
+                await delay(50); // Add a short delay between clicks
             }
             await button.click();
             updateStatus(`[${new Date().toLocaleString('ga-IE')}] Finished navigation to the map.`);
@@ -228,6 +229,10 @@ function sendTeamsMessage(message) {
             updateStatus(`[${new Date().toLocaleString('ga-IE')}] Error during button click sequence: ${error.message}`);
             console.error(error);
         }
+    }
+
+    function delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
   
     // Helper function to wait for an element by selector
