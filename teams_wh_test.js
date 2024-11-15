@@ -1,5 +1,6 @@
 // ==UserScript==
 // @name         Send Teams Message via WebHook
+// @icon         https://www.google.com/s2/favicons?sz=128&domain=https://teams.microsoft.com/
 // @namespace    http://tampermonkey.net/
 // @version      1.2
 // @description  Send a message to Microsoft Teams via WebHook stored in GM_getValue
