@@ -2,7 +2,7 @@
 // @name         RSA Availability Checker
 // @namespace    http://tampermonkey.net/
 // @icon         https://www.google.com/s2/favicons?sz=128&domain=https://rsa.ie
-// @version      1.33
+// @version      1.331
 // @description  Automatically navigates through rsa.ie and myroadsafety.rsa.ie to check availability slots.
 // @author       Lyushen
 // @license      GNU
@@ -117,7 +117,7 @@ function sendTeamsMessage(message) {
 
     const statusOverlay = document.createElement('div');
     statusOverlay.style.position = 'fixed';
-    statusOverlay.style.bottom = '0';
+    statusOverlay.style.top = '0'; // Change bottom to top statusOverlay.style.bottom = '0';
     statusOverlay.style.left = '0';
     statusOverlay.style.width = '100%';
     statusOverlay.style.maxHeight = '200px';
@@ -214,9 +214,9 @@ function sendTeamsMessage(message) {
             updateStatus(`[${new Date().toLocaleString('ga-IE')}] Clicking button 12 times`);
 
             for (let i = 0; i < 10; i++) {
-                await clickByXPath('//*[@id="agmMap"]/div/div/div[3]/div[12]/div/div[2]/div/button[2]', instantPressing);
+                await clickByXPath('//div[12]/div/div/div/button[2]', instantPressing);
             }
-            await clickByXPath('//*[@id="agmMap"]/div/div/div[3]/div[12]/div/div[2]/div/button[2]', !instantPressing);
+            await clickByXPath('//div[12]/div/div/div/button[2]', !instantPressing);
             updateStatus(`[${new Date().toLocaleString('ga-IE')}] Finished navigation to the map.`);
             await checkAvailabilityAndPlaySound();
         } catch (error) {
@@ -292,11 +292,11 @@ function sendTeamsMessage(message) {
                 break;
             } else if (noAvailabilityCount === 0) {
                 updateStatus(`[${new Date().toLocaleString('ga-IE')}] No "No availability at present" messages found. Slides may not be fully loaded. Waiting 5 seconds...`);
-                await clickByXPath('//*[@id="agmMap"]/div/div/div[3]/div[12]/div/div[2]/div/button[2]', !instantPressing);
+                await clickByXPath('//div[12]/div/div/div/button[2]', !instantPressing);
                 await new Promise(resolve => setTimeout(resolve, 5000));
             } else {
                 updateStatus(`[${new Date().toLocaleString('ga-IE')}] Slides partially loaded (${noAvailabilityCount} 'No availability' messages). Waiting 5 seconds...`);
-                await clickByXPath('//*[@id="agmMap"]/div/div/div[3]/div[12]/div/div[2]/div/button[2]', !instantPressing);
+                await clickByXPath('//div[12]/div/div/div/button[2]', !instantPressing);
                 await new Promise(resolve => setTimeout(resolve, 5000));
             }
         }
