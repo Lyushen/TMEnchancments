@@ -2,7 +2,7 @@
 // @name         RSA Availability Checker
 // @namespace    http://tampermonkey.net/
 // @icon         https://www.google.com/s2/favicons?sz=128&domain=https://rsa.ie
-// @version      1.342
+// @version      1.343
 // @description  Automatically navigates through rsa.ie and myroadsafety.rsa.ie to check availability slots.
 // @author       Lyushen
 // @license      GNU
@@ -319,12 +319,9 @@
     
             const nextButton = document.querySelector(".swiper-button-next");
             const prevButton = document.querySelector(".swiper-button-prev");
-            const selectCentreButton = document.querySelector(
-                'button.mat-button.mat-raised-button.mat-primary span:contains("Select Centre")'
-            );
     
-            if (!nextButton || !prevButton || !selectCentreButton) {
-                updateStatus(`[${new Date().toISOString()}] Navigation buttons or Select Centre button not found.`);
+            if (!nextButton || !prevButton) {
+                updateStatus(`[${new Date().toISOString()}] Navigation buttons not found.`);
                 return false;
             }
     
@@ -374,7 +371,18 @@
     
                     // Confirm navigation and select the center
                     updateStatus(`[${new Date().toISOString()}] Navigated to slide index ${availabilitySlideIndex}. Selecting Centre...`);
-                    selectCentreButton.click();
+                    
+                    // Attempting to find the "Select Centre" button
+                    const selectCentreButton = document.querySelector(
+                        'button.mat-button.mat-raised-button.mat-primary'
+                    );
+    
+                    if (selectCentreButton) {
+                        selectCentreButton.click();
+                    } else {
+                        // Fallback to XPath if the button is not found
+                        await clickByXPath('//app-map-dialog/div/div[2]/button', true);
+                    }
     
                     updateStatus(`[${new Date().toISOString()}] Centre selected successfully! Playing beep...`);
                     playFallbackBeep();
@@ -411,6 +419,7 @@
             return false;
         }
     }
+    
 
 
     function playFallbackBeep() {
