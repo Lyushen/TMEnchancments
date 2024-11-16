@@ -307,73 +307,111 @@
         });
     }
     async function checkAvailabilityAndPlaySound() {
-    updateStatus(`[${new Date().toISOString()}] Starting availability check...`);
-    try {
-        updateStatus(`[${new Date().toISOString()}] Waiting for app-slot-list-viewContainer...`);
-        const container = await waitForElement("div.app-slot-list-viewContainer", 30000);
-        updateStatus(`[${new Date().toISOString()}] app-slot-list-viewContainer found`);
-
-        updateStatus(`[${new Date().toISOString()}] Waiting for swiper-wrapper...`);
-        const swiperWrapper = await waitForElement(".swiper-wrapper", 30000);
-        updateStatus(`[${new Date().toISOString()}] swiper-wrapper found`);
-
-        let availabilityFound = false;
-        let availabilityTexts = [];
-        let noAvailabilityCount = 0;
-
-        const maxAttempts = 10;
-        for (let attempt = 0; attempt < maxAttempts; attempt++) {
-            updateStatus(`[${new Date().toISOString()}] Checking slides (Attempt ${attempt + 1}/${maxAttempts})...`);
-            const slides = swiperWrapper.querySelectorAll("div[data-swiper-slide-index]");
-            updateStatus(`[${new Date().toISOString()}] Found ${slides.length} slides.`);
-            noAvailabilityCount = 0;
-            availabilityFound = false;
-            availabilityTexts = [];
-            slides.forEach((slide, index) => {
-                const availabilityText = slide.textContent.trim();
-                /* console.log(`[${new Date().toISOString()}] Slide ${index + 1}: Availability Text: "${availabilityText}"`); */
-
-                if (availabilityText.includes("No availability at present")) {
-                    noAvailabilityCount++;
-                } else if (availabilityText && !availabilityText.includes("No availability at present")) {
-                    availabilityFound = true;
-                    availabilityTexts.push(availabilityText); // Collect availability text
-                }
-            });
-            if (noAvailabilityCount >= 50) {
-                updateStatus(`[${new Date().toISOString()}] Slides fully loaded.`);
-                break;
-            } else if (noAvailabilityCount === 0) {
-                updateStatus(`[${new Date().toISOString()}] No "No availability at present" messages found. Slides may not be fully loaded. Waiting 5 seconds...`);
-                const button = document.querySelector('button[aria-label="Zoom out"][title="Zoom out"]');
-                for (let i = 0; i < 3; i++) {
-                    button.click();
-                }
-                await new Promise(resolve => setTimeout(resolve, 5000));
-            } else {
-                updateStatus(`[${new Date().toISOString()}] Slides partially loaded (${noAvailabilityCount} 'No availability' messages). Waiting 5 seconds...`);
-                const button = document.querySelector('button[aria-label="Zoom out"][title="Zoom out"]');
-                for (let i = 0; i < 3; i++) {
-                    button.click();
-                }
-                await new Promise(resolve => setTimeout(resolve, 5000));
+        updateStatus(`[${new Date().toISOString()}] Starting availability check...`);
+        try {
+            updateStatus(`[${new Date().toISOString()}] Waiting for app-slot-list-viewContainer...`);
+            const container = await waitForElement("div.app-slot-list-viewContainer", 30000);
+            updateStatus(`[${new Date().toISOString()}] app-slot-list-viewContainer found`);
+    
+            updateStatus(`[${new Date().toISOString()}] Waiting for swiper-wrapper...`);
+            const swiperWrapper = await waitForElement(".swiper-wrapper", 30000);
+            updateStatus(`[${new Date().toISOString()}] swiper-wrapper found`);
+    
+            const nextButton = document.querySelector(".swiper-button-next");
+            const prevButton = document.querySelector(".swiper-button-prev");
+            const selectCentreButton = document.querySelector(
+                'button.mat-button.mat-raised-button.mat-primary span:contains("Select Centre")'
+            );
+    
+            if (!nextButton || !prevButton || !selectCentreButton) {
+                updateStatus(`[${new Date().toISOString()}] Navigation buttons or Select Centre button not found.`);
+                return false;
             }
-        }
-        if (availabilityFound) {
-            updateStatus(`[${new Date().toISOString()}] Availability detected! Playing beep...`);
-            playFallbackBeep();
-            // Send message to Teams with availability text
-            sendTeamsMessage(`Availability found! Details:<br>${availabilityTexts.join('<br>')}`);
-            return true;
-        } else {
+    
+            let availabilityFound = false;
+            let availabilityTexts = [];
+            let noAvailabilityCount = 0;
+    
+            const maxAttempts = 10;
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                updateStatus(`[${new Date().toISOString()}] Checking slides (Attempt ${attempt + 1}/${maxAttempts})...`);
+                const slides = swiperWrapper.querySelectorAll("div[data-swiper-slide-index]");
+                updateStatus(`[${new Date().toISOString()}] Found ${slides.length} slides.`);
+                noAvailabilityCount = 0;
+                availabilityFound = false;
+                availabilityTexts = [];
+                let availabilitySlideIndex = null;
+    
+                slides.forEach((slide, index) => {
+                    const availabilityText = slide.textContent.trim();
+                    /* console.log(`[${new Date().toISOString()}] Slide ${index + 1}: Availability Text: "${availabilityText}"`); */
+    
+                    if (availabilityText.includes("No availability at present")) {
+                        noAvailabilityCount++;
+                    } else if (availabilityText && !availabilityText.includes("No availability at present")) {
+                        availabilityFound = true;
+                        availabilityTexts.push(availabilityText); // Collect availability text
+                        availabilitySlideIndex = parseInt(slide.getAttribute("data-swiper-slide-index"), 10);
+                    }
+                });
+    
+                if (availabilityFound && availabilitySlideIndex !== null) {
+                    updateStatus(`[${new Date().toISOString()}] Availability detected on slide index ${availabilitySlideIndex}! Navigating...`);
+                    let currentActiveSlide = swiperWrapper.querySelector("div.swiper-slide-active");
+                    let currentIndex = parseInt(currentActiveSlide.getAttribute("data-swiper-slide-index"), 10);
+    
+                    // Navigate to the target slide with availability
+                    while (currentIndex !== availabilitySlideIndex) {
+                        if (currentIndex < availabilitySlideIndex) {
+                            nextButton.click();
+                        } else if (currentIndex > availabilitySlideIndex) {
+                            prevButton.click();
+                        }
+                        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for navigation to complete
+                        currentActiveSlide = swiperWrapper.querySelector("div.swiper-slide-active");
+                        currentIndex = parseInt(currentActiveSlide.getAttribute("data-swiper-slide-index"), 10);
+                    }
+    
+                    // Confirm navigation and select the center
+                    updateStatus(`[${new Date().toISOString()}] Navigated to slide index ${availabilitySlideIndex}. Selecting Centre...`);
+                    selectCentreButton.click();
+    
+                    updateStatus(`[${new Date().toISOString()}] Centre selected successfully! Playing beep...`);
+                    playFallbackBeep();
+    
+                    // Send message to Teams with availability text
+                    sendTeamsMessage(`Availability found! Details:<br>${availabilityTexts.join('<br>')}`);
+                    return true;
+                }
+    
+                if (noAvailabilityCount >= 50) {
+                    updateStatus(`[${new Date().toISOString()}] Slides fully loaded.`);
+                    break;
+                } else if (noAvailabilityCount === 0) {
+                    updateStatus(`[${new Date().toISOString()}] No "No availability at present" messages found. Slides may not be fully loaded. Waiting 5 seconds...`);
+                    const button = document.querySelector('button[aria-label="Zoom out"][title="Zoom out"]');
+                    for (let i = 0; i < 3; i++) {
+                        button.click();
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 5000));
+                } else {
+                    updateStatus(`[${new Date().toISOString()}] Slides partially loaded (${noAvailabilityCount} 'No availability' messages). Waiting 5 seconds...`);
+                    const button = document.querySelector('button[aria-label="Zoom out"][title="Zoom out"]');
+                    for (let i = 0; i < 3; i++) {
+                        button.click();
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 5000));
+                }
+            }
+    
             updateStatus(`[${new Date().toISOString()}] No availability found.`);
             return false;
+        } catch (error) {
+            updateStatus(`[${new Date().toISOString()}] Error: ${error.message}`);
+            return false;
         }
-    } catch (error) {
-        updateStatus(`[${new Date().toISOString()}] Error: ${error.message}`);
-        return false;
     }
-}
+
 
     function playFallbackBeep() {
         const context = new (window.AudioContext || window.webkitAudioContext)();
