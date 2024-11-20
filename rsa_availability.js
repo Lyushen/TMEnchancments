@@ -377,9 +377,9 @@
                 return; // Stop further execution
             }
             else
-                updateStatus(`[${new Date().toISOString()}] Zoom out button found. Pressing 10 times`);
+                updateStatus(`[${new Date().toISOString()}] Zoom out button found. Pressing 8 times`);
             await delay(50);
-            for (let i = 0; i < 10; i++) {
+            for (let i = 0; i < 8; i++) {
                 zoomout_button.click();
                 await delay(0);
             }
