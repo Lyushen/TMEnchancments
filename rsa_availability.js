@@ -211,7 +211,6 @@
     async function detectAndHandleStatus() {
         try {
             if (window.location.hostname === "rsaie.queue-it.net") {
-                
                 updateStatus(`[${new Date().toISOString()}] Detected queue-it.net redirection page. Waiting for confirm button or content change...`);
                 const button = document.querySelector("#buttonConfirmRedirect");
                 const startTimeElement = document.querySelector("#pConfirmRedirectTime");
@@ -251,7 +250,7 @@
                     updateStatus(`[${new Date().toISOString()}] Confirm button not clicked or redirection did not occur.`);
                 }
                 observer.disconnect(); // Clean up observer after timeout or success
-            } else if (window.location.hostname === "myroadsafety.rsa.ie" && !window.location.href.includes("/portal/my-goals")) {
+            } else if (window.location.hostname === "myroadsafety.rsa.ie") {
                 if (window.location.href.includes("/home/login")) {
                     if (!isWaitingForLogin) {
                         isWaitingForLogin = true;
@@ -260,42 +259,42 @@
                         await handleLoginModal();
                         return; // Stop further execution
                     }
+                } else if (window.location.href.includes("/portal/my-goals")) {
+                    updateStatus(`[${new Date().toISOString()}] Detected potential my-goals page. Verifying presence of "View my steps" button.`);
+                    
+                    let attempts = 0;
+                    const maxAttempts = 10;
+                    let buttonFound = false;
+                
+                    while (attempts < maxAttempts) {
+                        buttonFound = await waitForElementByName('View my steps', 5000);
+                        if (buttonFound) {
+                            updateStatus(`[${new Date().toISOString()}] "View my steps" button found. Proceeding with handleMyGoalsPage.`);
+                            await handleMyGoalsPage();
+                            return; // Exit after successful handling
+                        }
+                
+                        attempts++;
+                        updateStatus(`[${new Date().toISOString()}] Attempt ${attempts}/${maxAttempts}: "View my steps" button not found. Retrying after refresh.`);
+                        window.location.reload(); // Refresh the page
+                        await delay(3000); // Wait for the page to reload
+                    }
+                
+                    if (!buttonFound) {
+                        updateStatus(`[${new Date().toISOString()}] Exceeded maximum attempts (${maxAttempts}). Unable to find "View my steps" button.`);
+                    }
                 } else {
                     updateStatus(`[${new Date().toISOString()}] Navigating to my-goals page after 2 sec delay.`);
                     await delay(2000);
                     window.location.href = "https://myroadsafety.rsa.ie/portal/my-goals";
                 }
-            } else if (window.location.href.includes("https://myroadsafety.rsa.ie/portal/my-goals")) {
-                updateStatus(`[${new Date().toISOString()}] Detected my-goals page, checking for "View my steps" button.`);
-                
-                let attempts = 0;
-                const maxAttempts = 10;
-                let buttonFound = false;
-            
-                while (attempts < maxAttempts) {
-                    buttonFound = await waitForElementByName('View my steps', 5000);
-                    if (buttonFound) {
-                        updateStatus(`[${new Date().toISOString()}] "View my steps" button found. Proceeding with handleMyGoalsPage.`);
-                        await handleMyGoalsPage();
-                        return; // Exit after successful handling
-                    }
-            
-                    attempts++;
-                    updateStatus(`[${new Date().toISOString()}] Attempt ${attempts}/${maxAttempts}: "View my steps" button not found. Retrying after refresh.`);
-                    window.location.reload(); // Refresh the page
-                    await delay(3000); // Wait for the page to reload
-                }
-            
-                if (!buttonFound) {
-                    updateStatus(`[${new Date().toISOString()}] Exceeded maximum attempts (${maxAttempts}). Unable to find "View my steps" button.`);
-                }
             }
-            
         } catch (error) {
             updateStatus(`[${new Date().toISOString()}] Error: ${error.message}`);
             console.error(error);
         }
     }
+    
 
     async function handleLoginModal() {
         try {
