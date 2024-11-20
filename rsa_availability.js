@@ -209,45 +209,46 @@
     async function detectAndHandleStatus() {
         try {
             if (window.location.hostname === "rsaie.queue-it.net") {
-                updateStatus(`[${new Date().toISOString()}] Detected queue-it.net redirection page. Waiting for confirm button or URL change...`);
-    
-                let buttonVisible = false;
-    
-                // Monitor for the button or automatic redirection
-                const waitForButtonOrRedirect = async () => {
-                    const button = document.querySelector("#buttonConfirmRedirect");
-                    const startTimeElement = document.querySelector("#pConfirmRedirectTime");
-    
-                    // Check if button exists and is visible
-                    if (button && startTimeElement) {
-                        buttonVisible = getComputedStyle(startTimeElement).display !== "none";
-                        if (buttonVisible) {
-                            updateStatus(`[${new Date().toISOString()}] Confirm button is now visible, clicking it.`);
-                            button.click();
-                            return true; // Stop waiting
-                        }
+                
+                updateStatus(`[${new Date().toISOString()}] Detected queue-it.net redirection page. Waiting for confirm button or content change...`);
+                const button = document.querySelector("#buttonConfirmRedirect");
+                const startTimeElement = document.querySelector("#pConfirmRedirectTime");
+                if (!button || !startTimeElement) {
+                    updateStatus(`[${new Date().toISOString()}] Necessary elements not found on the page.`);
+                    return;
+                }
+                let buttonClicked = false;
+                const handleChange = () => {
+                    const spanText = startTimeElement.querySelector("span")?.textContent || "";
+                    if (spanText.trim() !== "" && !buttonClicked) {
+                        updateStatus(`[${new Date().toISOString()}] Confirm button is now visible due to content change. Clicking it.`);
+                        button.click();
+                        buttonClicked = true; // Prevent multiple clicks
                     }
-    
+                };
+                // Observe changes to the pConfirmRedirectTime element
+                const observer = new MutationObserver(handleChange);
+                observer.observe(startTimeElement, {
+                    childList: true,
+                    subtree: true,
+                    characterData: true
+                });
+                // Check for automatic URL redirection as a fallback
+                const timeout = Date.now() + 30000; // Timeout after 30 seconds
+                while (Date.now() < timeout) {
+                    if (buttonClicked) break;
                     // Check for automatic URL redirection
                     if (window.location.hostname !== "rsaie.queue-it.net") {
                         updateStatus(`[${new Date().toISOString()}] Redirected automatically. Proceeding with next steps.`);
-                        return true; // Stop waiting
+                        observer.disconnect(); // Stop observing
+                        return;
                     }
-    
-                    return false; // Keep waiting
-                };
-    
-                // Wait for either the button visibility or URL change
-                const timeout = Date.now() + 30000; // Timeout after 30 seconds
-                while (Date.now() < timeout) {
-                    if (await waitForButtonOrRedirect()) break;
                     await delay(500); // Poll every 500ms
                 }
-    
-                if (!buttonVisible && window.location.hostname === "rsaie.queue-it.net") {
-                    updateStatus(`[${new Date().toISOString()}] Confirm button not found or automatic redirection did not occur.`);
+                if (!buttonClicked) {
+                    updateStatus(`[${new Date().toISOString()}] Confirm button not clicked or redirection did not occur.`);
                 }
-    
+                observer.disconnect(); // Clean up observer after timeout or success
             } else if (window.location.hostname === "myroadsafety.rsa.ie" && !window.location.href.includes("/portal/my-goals")) {
                 if (window.location.href.includes("/home/login")) {
                     if (!isWaitingForLogin) {
