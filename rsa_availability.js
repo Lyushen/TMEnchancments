@@ -2,7 +2,7 @@
 // @name         RSA Availability Checker
 // @namespace    http://tampermonkey.net/
 // @icon         https://www.google.com/s2/favicons?sz=128&domain=https://rsa.ie
-// @version      1.345
+// @version      1.350
 // @description  Automatically navigates through rsa.ie and myroadsafety.rsa.ie to check availability slots.
 // @author       Lyushen
 // @license      GNU
@@ -12,6 +12,7 @@
 // @downloadURL  https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/rsa_availability.js
 // @match        https://myroadsafety.rsa.ie/*
 // @match        https://rsaie.queue-it.net/*
+// @match        https://account.mygovid.ie/*
 // @grant        GM_addStyle
 // @grant        GM_notification
 // @grant        GM_getValue
@@ -100,38 +101,6 @@
         } catch (error) {
             // Catch unexpected errors
             updateStatus(`[${new Date().toISOString()}] Unexpected error sending message: ${error.message}`);
-        }
-    }
-    async function waitForElementByXPath(xpath, timeout = 15000) {
-        return new Promise((resolve, reject) => {
-            const interval = 500;
-            const endTime = Date.now() + timeout;
-
-            const checkForElement = () => {
-                const element = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-                if (element) {
-                    resolve(element);
-                } else if (Date.now() > endTime) {
-                    reject(new Error(`[${new Date().toISOString()}] Element with XPath "${xpath}" not found within ${timeout}ms.`));
-                } else {
-                    setTimeout(checkForElement, interval);
-                }
-            };
-
-            checkForElement();
-        });
-    }
-    async function clickByXPath(xpath, instant = false) {
-        try {
-            const element = await waitForElementByXPath(xpath);
-            if (!instant) {
-                await new Promise(resolve => setTimeout(resolve, Math.floor(Math.random() * 1000) + 1000)); // Random wait between 1-2 seconds
-            }
-            element.click();
-            console.log(`[${new Date().toISOString()}] Clicked element with XPath: ${xpath}`);
-        } catch (error) {
-            console.error(`[${new Date().toISOString()}] Error:`, error);
-            updateStatus(`[${new Date().toISOString()}] Error: ${error.message}`);
         }
     }
 
@@ -240,15 +209,45 @@
     async function detectAndHandleStatus() {
         try {
             if (window.location.hostname === "rsaie.queue-it.net") {
-                updateStatus(`[${new Date().toISOString()}] Detected queue-it.net redirection page. Waiting for confirm button...`);
-                await waitForElementByXPath('//*[@id="buttonConfirmRedirect"]/span', 30000)
-                    .then((button) => {
-                        updateStatus(`[${new Date().toISOString()}] Confirm button found, clicking it.`);
-                        button.click();
-                    })
-                    .catch(() => {
-                        updateStatus(`[${new Date().toISOString()}] Confirm button not found, waiting for automatic redirection.`);
-                    });
+                updateStatus(`[${new Date().toISOString()}] Detected queue-it.net redirection page. Waiting for confirm button or URL change...`);
+    
+                let buttonVisible = false;
+    
+                // Monitor for the button or automatic redirection
+                const waitForButtonOrRedirect = async () => {
+                    const button = document.querySelector("#buttonConfirmRedirect");
+                    const startTimeElement = document.querySelector("#pConfirmRedirectTime");
+    
+                    // Check if button exists and is visible
+                    if (button && startTimeElement) {
+                        buttonVisible = getComputedStyle(startTimeElement).display !== "none";
+                        if (buttonVisible) {
+                            updateStatus(`[${new Date().toISOString()}] Confirm button is now visible, clicking it.`);
+                            button.click();
+                            return true; // Stop waiting
+                        }
+                    }
+    
+                    // Check for automatic URL redirection
+                    if (window.location.hostname !== "rsaie.queue-it.net") {
+                        updateStatus(`[${new Date().toISOString()}] Redirected automatically. Proceeding with next steps.`);
+                        return true; // Stop waiting
+                    }
+    
+                    return false; // Keep waiting
+                };
+    
+                // Wait for either the button visibility or URL change
+                const timeout = Date.now() + 30000; // Timeout after 30 seconds
+                while (Date.now() < timeout) {
+                    if (await waitForButtonOrRedirect()) break;
+                    await delay(500); // Poll every 500ms
+                }
+    
+                if (!buttonVisible && window.location.hostname === "rsaie.queue-it.net") {
+                    updateStatus(`[${new Date().toISOString()}] Confirm button not found or automatic redirection did not occur.`);
+                }
+    
             } else if (window.location.hostname === "myroadsafety.rsa.ie" && !window.location.href.includes("/portal/my-goals")) {
                 if (window.location.href.includes("/home/login")) {
                     if (!isWaitingForLogin) {
@@ -259,22 +258,46 @@
                         return; // Stop further execution
                     }
                 } else {
-                    updateStatus(`[${new Date().toISOString()}] Navigating to my-goals page.`);
+                    updateStatus(`[${new Date().toISOString()}] Navigating to my-goals page after 2 sec delay.`);
+                    await delay(2000);
                     window.location.href = "https://myroadsafety.rsa.ie/portal/my-goals";
                 }
             } else if (window.location.href.includes("https://myroadsafety.rsa.ie/portal/my-goals")) {
-                updateStatus(`[${new Date().toISOString()}] Detected my-goals page, starting sequence of button clicks.`);
-                await handleMyGoalsPage();
+                updateStatus(`[${new Date().toISOString()}] Detected my-goals page, checking for "View my steps" button.`);
+                
+                let attempts = 0;
+                const maxAttempts = 10;
+                let buttonFound = false;
+            
+                while (attempts < maxAttempts) {
+                    buttonFound = await waitForElementByName('View my steps', 5000);
+                    if (buttonFound) {
+                        updateStatus(`[${new Date().toISOString()}] "View my steps" button found. Proceeding with handleMyGoalsPage.`);
+                        await handleMyGoalsPage();
+                        return; // Exit after successful handling
+                    }
+            
+                    attempts++;
+                    updateStatus(`[${new Date().toISOString()}] Attempt ${attempts}/${maxAttempts}: "View my steps" button not found. Retrying after refresh.`);
+                    window.location.reload(); // Refresh the page
+                    await delay(3000); // Wait for the page to reload
+                }
+            
+                if (!buttonFound) {
+                    updateStatus(`[${new Date().toISOString()}] Exceeded maximum attempts (${maxAttempts}). Unable to find "View my steps" button.`);
+                }
             }
+            
         } catch (error) {
             updateStatus(`[${new Date().toISOString()}] Error: ${error.message}`);
             console.error(error);
         }
     }
+
     async function handleLoginModal() {
         try {
             updateStatus(`[${new Date().toISOString()}] Waiting for the modal close button...`);
-            const closeModalButton = await waitForElement('button[mat-dialog-close][mat-icon-button][aria-label="close modal"]', 30000);
+            const closeModalButton = await waitForElement('button[mat-dialog-close][mat-icon-button][aria-label="close modal"]', 20000);
             if (closeModalButton) {
                 updateStatus(`[${new Date().toISOString()}] Modal close button found. Clicking it.`);
                 closeModalButton.click();
@@ -284,7 +307,7 @@
             }
     
             updateStatus(`[${new Date().toISOString()}] Waiting for "myGov" button...`);
-            const myGovButton = await waitForElement('button#myGov.mygov-button', 30000);
+            const myGovButton = await waitForElement('button#myGov.mygov-button', 20000);
             if (myGovButton) {
                 updateStatus(`[${new Date().toISOString()}] "myGov" button found. Clicking it.`);
                 myGovButton.click();
@@ -294,14 +317,16 @@
             }
     
             updateStatus(`[${new Date().toISOString()}] Waiting for "Continue" button on the second modal...`);
-            const continueButton = await waitForElement('button.mat-flat-button[color="primary"] span.mat-button-wrapper:contains("Continue")', 30000);
+            const continueButton = [...document.querySelectorAll('button')].find(
+                btn => btn.textContent.trim() === 'Continue'
+            );
+            
             if (continueButton) {
                 updateStatus(`[${new Date().toISOString()}] "Continue" button found. Clicking it.`);
                 continueButton.click();
             } else {
                 updateStatus(`[${new Date().toISOString()}] "Continue" button not found.`);
-                return;
-            }
+            }            
     
             updateStatus(`[${new Date().toISOString()}] Login process handled. Sending notification.`);
             await sendNotification(`[${new Date().toISOString()}] Please login.`);
@@ -309,6 +334,25 @@
             updateStatus(`[${new Date().toISOString()}] Error during login modal handling: ${error.message}`);
             console.error(error);
         }
+    }
+    async function waitForElementByXPath(xpath, timeout = 15000) {
+        return new Promise((resolve, reject) => {
+            const interval = 500;
+            const endTime = Date.now() + timeout;
+
+            const checkForElement = () => {
+                const element = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                if (element) {
+                    resolve(element);
+                } else if (Date.now() > endTime) {
+                    reject(new Error(`[${new Date().toISOString()}] Element with XPath "${xpath}" not found within ${timeout}ms.`));
+                } else {
+                    setTimeout(checkForElement, interval);
+                }
+            };
+
+            checkForElement();
+        });
     }
     async function handleMyGoalsPage() {
         try {
@@ -326,15 +370,16 @@
             }
             moreLocationsButton.click();
 
-            //updateStatus(`[${new Date().toISOString()}] Clicking button 10 times`);
             // Wait for and find the button based on attributes
-            const zoomout_button = await waitForElement('button[aria-label="Zoom out"][title="Zoom out"]', 10000);
+            const zoomout_button = await waitForElement('button[aria-label="Zoom out"]', 10000);
             if (!zoomout_button) {
                 updateStatus(`${new Date().toISOString()}] Zoom out button not found within the timeout period.`);
                 return; // Stop further execution
             }
-            await delay(10);
-            for (let i = 0; i < 15; i++) {
+            else
+                updateStatus(`[${new Date().toISOString()}] Zoom out button found. Pressing 10 times`);
+            await delay(50);
+            for (let i = 0; i < 10; i++) {
                 zoomout_button.click();
                 await delay(0);
             }
@@ -347,6 +392,38 @@
     }
     function delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
+    }
+    async function waitForElementByXPath(xpath, timeout = 15000) {
+        return new Promise((resolve, reject) => {
+            const interval = 500;
+            const endTime = Date.now() + timeout;
+
+            const checkForElement = () => {
+                const element = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                if (element) {
+                    resolve(element);
+                } else if (Date.now() > endTime) {
+                    reject(new Error(`[${new Date().toISOString()}] Element with XPath "${xpath}" not found within ${timeout}ms.`));
+                } else {
+                    setTimeout(checkForElement, interval);
+                }
+            };
+
+            checkForElement();
+        });
+    }
+    async function clickByXPath(xpath, instant = false) {
+        try {
+            const element = await waitForElementByXPath(xpath);
+            if (!instant) {
+                await new Promise(resolve => setTimeout(resolve, Math.floor(Math.random() * 1000) + 1000)); // Random wait between 1-2 seconds
+            }
+            element.click();
+            console.log(`[${new Date().toISOString()}] Clicked element with XPath: ${xpath}`);
+        } catch (error) {
+            console.error(`[${new Date().toISOString()}] Error:`, error);
+            updateStatus(`[${new Date().toISOString()}] Error: ${error.message}`);
+        }
     }
     async function waitForElement(selector, timeout = 30000) {
         return new Promise((resolve, reject) => {
@@ -365,6 +442,25 @@
             checkForElement();
         });
     }
+    async function waitForElementByName(name, timeout = 30000) {
+        return new Promise((resolve, reject) => {
+            const interval = 500; // Check every 500ms
+            const endTime = Date.now() + timeout;
+    
+            const checkForElement = () => {
+                const element = [...document.querySelectorAll('button')].find(btn => btn.textContent.trim().includes(name));
+                if (element) {
+                    resolve(element);
+                } else if (Date.now() > endTime) {
+                    reject(new Error(`[${new Date().toISOString()}] Button with name "${name}" not found within ${timeout}ms.`));
+                } else {
+                    setTimeout(checkForElement, interval);
+                }
+            };
+            checkForElement();
+        });
+    }
+
     async function checkAvailability() {
         updateStatus(`[${new Date().toISOString()}] Starting availability check...`);
         try {
