@@ -2,7 +2,7 @@
 // @name         RSA Availability Checker
 // @namespace    http://tampermonkey.net/
 // @icon         https://www.google.com/s2/favicons?sz=128&domain=https://rsa.ie
-// @version      1.353
+// @version      1.354
 // @description  Automatically navigates through rsa.ie and myroadsafety.rsa.ie to check availability slots.
 // @author       Lyushen
 // @license      GNU
@@ -27,7 +27,35 @@
     'use strict';
     console.log(`[${new Date().toISOString()}] Script started...`);
     
-    
+    // Wake lock functions
+    let wakeLock = null;
+
+    async function requestWakeLock() {
+        try {
+            wakeLock = await navigator.wakeLock.request('screen');
+            updateStatus(`[${new Date().toISOString()}] Screen wake lock acquired.`);
+            wakeLock.addEventListener('release', () => {
+                updateStatus(`[${new Date().toISOString()}] Screen wake lock released.`);
+            });
+        } catch (err) {
+            updateStatus(`[${new Date().toISOString()}] Failed to acquire screen wake lock: ${err.message}`);
+        }
+    }
+    async function releaseWakeLock() {
+        if (wakeLock) {
+            try {
+                await wakeLock.release();
+                wakeLock = null;
+                updateStatus(`[${new Date().toISOString()}] Screen wake lock manually released.`);
+            } catch (err) {
+                updateStatus(`[${new Date().toISOString()}] Failed to release screen wake lock: ${err.message}`);
+            }
+        }
+    }
+    // Automatically request the wake lock at the start of the script
+    requestWakeLock();
+
+
     function getPreferredWebhookUrl() {
         let preferredNotificator = GM_getValue('preferredNotificator', '');
         let url;
@@ -106,33 +134,7 @@
         }
     }
 
-    // Wake lock functions
-    let wakeLock = null;
-
-    async function requestWakeLock() {
-        try {
-            wakeLock = await navigator.wakeLock.request('screen');
-            updateStatus(`[${new Date().toISOString()}] Screen wake lock acquired.`);
-            wakeLock.addEventListener('release', () => {
-                updateStatus(`[${new Date().toISOString()}] Screen wake lock released.`);
-            });
-        } catch (err) {
-            updateStatus(`[${new Date().toISOString()}] Failed to acquire screen wake lock: ${err.message}`);
-        }
-    }
-    async function releaseWakeLock() {
-        if (wakeLock) {
-            try {
-                await wakeLock.release();
-                wakeLock = null;
-                updateStatus(`[${new Date().toISOString()}] Screen wake lock manually released.`);
-            } catch (err) {
-                updateStatus(`[${new Date().toISOString()}] Failed to release screen wake lock: ${err.message}`);
-            }
-        }
-    }
-    // Automatically request the wake lock at the start of the script
-    requestWakeLock();
+    
     // Clean up wake lock when the page unloads
     window.addEventListener('beforeunload', releaseWakeLock);
 
@@ -234,22 +236,32 @@
                     subtree: true,
                     characterData: true
                 });
-                // Check for automatic URL redirection as a fallback
-                const timeout = Date.now() + 30000; // Timeout after 30 seconds
-                while (Date.now() < timeout) {
-                    if (buttonClicked) break;
-                    // Check for automatic URL redirection
-                    if (window.location.hostname !== "rsaie.queue-it.net") {
-                        updateStatus(`[${new Date().toISOString()}] Redirected automatically. Proceeding with next steps.`);
-                        observer.disconnect(); // Stop observing
-                        return;
+            
+                const pollForRedirectionOrButton = async (timeoutMs) => {
+                    const endTime = Date.now() + timeoutMs;
+                    while (Date.now() < endTime) {
+                        if (buttonClicked) break;
+                        if (window.location.hostname !== "rsaie.queue-it.net") {
+                            updateStatus(`[${new Date().toISOString()}] Redirected automatically. Proceeding with next steps.`);
+                            observer.disconnect(); // Stop observing
+                            return;
+                        }
+                        await delay(500); // Poll every 500ms
                     }
-                    await delay(500); // Poll every 500ms
-                }
-                if (!buttonClicked) {
-                    updateStatus(`[${new Date().toISOString()}] Confirm button not clicked or redirection did not occur.`);
-                }
-                observer.disconnect(); // Clean up observer after timeout or success
+                    if (!buttonClicked) {
+                        updateStatus(`[${new Date().toISOString()}] Confirm button not clicked or redirection did not occur within ${timeoutMs / 1000} seconds.`);
+                    }
+                };
+            
+                // Wait for up to 10 minutes (600,000ms)
+                pollForRedirectionOrButton(600000)
+                    .then(() => {
+                        if (!buttonClicked) {
+                            updateStatus(`[${new Date().toISOString()}] Extending the wait as the queue might take more time.`);
+                            // Optionally re-call the pollForRedirectionOrButton if needed or notify the user.
+                        }
+                    })
+                    .finally(() => observer.disconnect()); // Clean up observer after timeout or success     
             } else if (window.location.hostname === "myroadsafety.rsa.ie") {
                 if (window.location.href.includes("/home/login")) {
                     if (!isWaitingForLogin) {
@@ -467,8 +479,12 @@
     async function checkAvailability() {
         updateStatus(`[${new Date().toISOString()}] Starting availability check...`);
         try {
+            // Retrieve preferred Counties from localStorage
+            const preferedCounties = GM_getValue('preferedCounties', '');
+            const preferredCountiesList = preferedCounties.split(";").map(country => country.trim());
+    
             updateStatus(`[${new Date().toISOString()}] Waiting for app-slot-list-viewContainer...`);
-            const container = await waitForElement("div.app-slot-list-viewContainer", 30000);
+            await waitForElement("div.app-slot-list-viewContainer", 30000);
             updateStatus(`[${new Date().toISOString()}] app-slot-list-viewContainer found`);
     
             updateStatus(`[${new Date().toISOString()}] Waiting for swiper-wrapper...`);
@@ -491,14 +507,22 @@
                 targetSlideIndex = null;
     
                 slides.forEach((slide, index) => {
-                    const availabilityText = slide.textContent.trim();
-                    if (availabilityText.includes("No availability at present")) {
-                        noAvailabilityCount++;
-                    } else if (availabilityText && !availabilityText.includes("No availability at present")) {
-                        availabilityFound = true;
-                        availabilityTexts.push(availabilityText); // Collect availability text
-                        if (!targetSlideIndex) {
-                            targetSlideIndex = slide.getAttribute("data-swiper-slide-index");
+                    const availabilityText = slide.textContent;
+    
+                    // Parse availability text
+                    const [locationInfo] = availabilityText.split("Next available date");
+                    if (locationInfo) {
+                        const locationParts = locationInfo.split(",").map(part => part.trim());
+                        const country = locationParts[locationParts.length - 1]; // Assume the last part is the country
+    
+                        if (availabilityText.includes("No availability at present")) {
+                            noAvailabilityCount++;
+                        } else if (availabilityText && !availabilityText.includes("No availability at present")) {
+                            availabilityTexts.push({ text: availabilityText, country, index });
+                            if (!availabilityFound && preferredCountiesList.includes(country)) {
+                                availabilityFound = true;
+                                targetSlideIndex = slide.getAttribute("data-swiper-slide-index");
+                            }
                         }
                     }
                 });
@@ -524,7 +548,7 @@
             }
     
             if (availabilityFound && targetSlideIndex !== null) {
-                updateStatus(`[${new Date().toISOString()}] Availability detected in slide ${targetSlideIndex}!`);
+                updateStatus(`[${new Date().toISOString()}] Availability detected in preferred location, slide ${targetSlideIndex}!`);
                 document.querySelector(`div[data-swiper-slide-index="${targetSlideIndex}"] button`).click();
                 updateStatus(`[${new Date().toISOString()}] Clicked on slide ${targetSlideIndex}`);
     
@@ -548,10 +572,15 @@
                     updateStatus(`[${new Date().toISOString()}] "Confirm" button not found.`);
                 }
     
-                sendNotification(`Availability found and attempted selection! Details:<br>${availabilityTexts.join('<br>')}<br>Please proceed.`);
+                sendNotification(`Availability found and booked! Details:<br>${availabilityTexts.map(a => a.text).join('<br>')}<br>Please proceed.`);
                 return true;
             } else {
-                updateStatus(`[${new Date().toISOString()}] No availability found.`);
+                // Notify for non-preferred locations
+                if (availabilityTexts.length > 0) {
+                    sendNotification(`Availability found but not in preferred locations:<br>${availabilityTexts.map(a => a.text).join('<br>')}`);
+                } else {
+                    updateStatus(`[${new Date().toISOString()}] No availability found.`);
+                }
                 return false;
             }
         } catch (error) {
@@ -559,6 +588,7 @@
             return false;
         }
     }
+    
     
     mainLoop();
 })();
