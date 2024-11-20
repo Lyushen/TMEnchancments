@@ -2,7 +2,7 @@
 // @name         RSA Availability Checker
 // @namespace    http://tampermonkey.net/
 // @icon         https://www.google.com/s2/favicons?sz=128&domain=https://rsa.ie
-// @version      1.339
+// @version      1.340
 // @description  Automatically navigates through rsa.ie and myroadsafety.rsa.ie to check availability slots.
 // @author       Lyushen
 // @license      GNU
@@ -18,6 +18,7 @@
 // @grant        GM_setValue
 // @grant        GM_xmlhttpRequest
 // @connect      webhook.office.com
+// @connect      discord.com
 // @connect      *.rsa.ie
 // ==/UserScript==
 
@@ -25,51 +26,80 @@
     'use strict';
     console.log(`[${new Date().toISOString()}] Script started...`);
     
-    function getTeamsWebhookUrl() {
-        let url = GM_getValue('teamsWebhookUrl', '');
+    function getPreferredWebhookUrl() {
+        let preferredNotificator = GM_getValue('preferredNotificator', '');
+        let url;
+    
+        if (preferredNotificator === 'teams') {
+            url = GM_getValue('teamsWebhookUrl', '');
+        } else if (preferredNotificator === 'discord') {
+            url = GM_getValue('discordWebhookUrl', '');
+        }
+    
         if (url) {
-            console.log(`[${new Date().toISOString()}] Teams Webhook URL Received.`);
-            return url;
+            console.log(`[${new Date().toISOString()}] ${preferredNotificator} Webhook URL Received.`);
+            return { url, platform: preferredNotificator };
         } else {
-            // Set a default empty value if the URL is not found
-            const defaultUrl = '';
-            GM_setValue('teamsWebhookUrl', defaultUrl);
-            return defaultUrl;
+            // Ask user to input a URL and determine the platform
+            const inputUrl = prompt("Please provide the webhook URL:");
+            if (inputUrl) {
+                if (inputUrl.includes('webhook.office.com')) {
+                    GM_setValue('teamsWebhookUrl', inputUrl);
+                    GM_setValue('preferredNotificator', 'teams');
+                    return { url: inputUrl, platform: 'teams' };
+                } else if (inputUrl.includes('discord.com')) {
+                    GM_setValue('discordWebhookUrl', inputUrl);
+                    GM_setValue('preferredNotificator', 'discord');
+                    return { url: inputUrl, platform: 'discord' };
+                } else {
+                    alert("Invalid webhook URL. Please provide a valid Teams or Discord webhook URL.");
+                    return { url: '', platform: '' };
+                }
+            } else {
+                alert("Webhook URL is required.");
+                return { url: '', platform: '' };
+            }
         }
     }
-    function sendTeamsMessage(message) {
+    
+    function sendNotification(message) {
         try {
-            // Retrieve the webhook URL
-            const webhookUrl = getTeamsWebhookUrl();
-
+            // Retrieve the webhook URL and platform
+            const { url, platform } = getPreferredWebhookUrl();
+    
             // Check if webhook URL is set
-            if (!webhookUrl) {
-                updateStatus(`[${new Date().toISOString()}] Teams webhook URL is not set. Please set it in the Tampermonkey script settings.`);
+            if (!url) {
+                updateStatus(`[${new Date().toISOString()}] Webhook URL is not set. Please set it in the Tampermonkey script settings.`);
                 return;
             }
-
+    
+            // Determine payload structure based on platform
+            const payload = platform === 'discord'
+                ? { content: message } // Discord expects 'content' instead of 'text'
+                : { text: message }; // Teams expects 'text'
+    
             // Send the message using GM_xmlhttpRequest
             GM_xmlhttpRequest({
                 method: 'POST',
-                url: webhookUrl,
+                url: url,
                 headers: { 'Content-Type': 'application/json' },
-                data: JSON.stringify({ text: message }),
+                data: JSON.stringify(payload),
                 onload: (response) => {
                     if (response.status === 200) {
-                        updateStatus(`[${new Date().toISOString()}] Message sent to Teams successfully.`);
+                        updateStatus(`[${new Date().toISOString()}] Message sent to ${platform} successfully.`);
                     } else {
-                        updateStatus(`[${new Date().toISOString()}] Error sending message to Teams: ${response.status} - ${response.statusText}`);
+                        updateStatus(`[${new Date().toISOString()}] Error sending message to ${platform}: ${response.status} - ${response.statusText}`);
                     }
                 },
                 onerror: (error) => {
                     const errorMessage = error && error.message ? error.message : JSON.stringify(error);
-                    updateStatus(`[${new Date().toISOString()}] Error sending message to Teams: ${errorMessage}`);
+                    updateStatus(`[${new Date().toISOString()}] Error sending message to ${platform}: ${errorMessage}`);
                     console.error('Detailed error:', error); // Log the entire error for debugging
                 }
             });
         } catch (error) {
             // Catch unexpected errors
-            updateStatus(`[${new Date().toISOString()}] Unexpected error sending message to Teams: ${error.message}`);
+            updateStatus(`[${new Date().toISOString()}] Unexpected error sending message: ${error.message}`);
         }
     }
     async function waitForElementByXPath(xpath, timeout = 15000) {
@@ -167,7 +197,7 @@
                 return; // Exit the main loop
             }
             await detectAndHandleStatus();
-            availabilityFound = await checkAvailabilityAndPlaySound();
+            availabilityFound = await checkAvailability();
             if (!availabilityFound) {
                 updateStatus(`[${new Date().toISOString()}] No availability found. Refreshing in 10 seconds...`);
                 await new Promise(resolve => setTimeout(resolve, 10000));
@@ -184,20 +214,19 @@
                 updateStatus(`[${new Date().toISOString()}] Detected queue-it.net redirection page. Waiting for confirm button...`);
                 await waitForElementByXPath('//*[@id="buttonConfirmRedirect"]/span', 30000)
                     .then((button) => {
-                    updateStatus(`[${new Date().toISOString()}] Confirm button found, clicking it.`);
-                    button.click();
-                })
+                        updateStatus(`[${new Date().toISOString()}] Confirm button found, clicking it.`);
+                        button.click();
+                    })
                     .catch(() => {
-                    updateStatus(`[${new Date().toISOString()}] Confirm button not found, waiting for automatic redirection.`);
-                });
+                        updateStatus(`[${new Date().toISOString()}] Confirm button not found, waiting for automatic redirection.`);
+                    });
             } else if (window.location.hostname === "myroadsafety.rsa.ie" && !window.location.href.includes("/portal/my-goals")) {
                 if (window.location.href.includes("/home/login")) {
-                    // Handle the login redirection case
                     if (!isWaitingForLogin) {
-                        isWaitingForLogin = true; // Set flag to avoid re-execution
+                        isWaitingForLogin = true;
                         stopMainLoop = true; // Stop the main loop
-                        updateStatus(`[${new Date().toISOString()}] Redirected to login page. Sending message to Teams.`);
-                        await sendTeamsMessage(`[${new Date().toISOString()}] Please login.`);
+                        updateStatus(`[${new Date().toISOString()}] Redirected to login page. Handling login modal.`);
+                        await handleLoginModal();
                         return; // Stop further execution
                     }
                 } else {
@@ -213,7 +242,45 @@
             console.error(error);
         }
     }
-
+    async function handleLoginModal() {
+        try {
+            updateStatus(`[${new Date().toISOString()}] Waiting for the modal close button...`);
+            const closeModalButton = await waitForElement('button[mat-dialog-close][mat-icon-button][aria-label="close modal"]', 30000);
+            if (closeModalButton) {
+                updateStatus(`[${new Date().toISOString()}] Modal close button found. Clicking it.`);
+                closeModalButton.click();
+            } else {
+                updateStatus(`[${new Date().toISOString()}] Modal close button not found.`);
+                return;
+            }
+    
+            updateStatus(`[${new Date().toISOString()}] Waiting for "myGov" button...`);
+            const myGovButton = await waitForElement('button#myGov.mygov-button', 30000);
+            if (myGovButton) {
+                updateStatus(`[${new Date().toISOString()}] "myGov" button found. Clicking it.`);
+                myGovButton.click();
+            } else {
+                updateStatus(`[${new Date().toISOString()}] "myGov" button not found.`);
+                return;
+            }
+    
+            updateStatus(`[${new Date().toISOString()}] Waiting for "Continue" button on the second modal...`);
+            const continueButton = await waitForElement('button.mat-flat-button[color="primary"] span.mat-button-wrapper:contains("Continue")', 30000);
+            if (continueButton) {
+                updateStatus(`[${new Date().toISOString()}] "Continue" button found. Clicking it.`);
+                continueButton.click();
+            } else {
+                updateStatus(`[${new Date().toISOString()}] "Continue" button not found.`);
+                return;
+            }
+    
+            updateStatus(`[${new Date().toISOString()}] Login process handled. Sending notification.`);
+            await sendNotification(`[${new Date().toISOString()}] Please login.`);
+        } catch (error) {
+            updateStatus(`[${new Date().toISOString()}] Error during login modal handling: ${error.message}`);
+            console.error(error);
+        }
+    }
     async function handleMyGoalsPage() {
         try {
             await clickByXPath('//mat-card-content/div/div/button/span', !instantPressing);
@@ -230,20 +297,20 @@
             }
             moreLocationsButton.click();
 
-            updateStatus(`[${new Date().toISOString()}] Clicking button 10 times`);
+            //updateStatus(`[${new Date().toISOString()}] Clicking button 10 times`);
             // Wait for and find the button based on attributes
             const zoomout_button = await waitForElement('button[aria-label="Zoom out"][title="Zoom out"]', 10000);
             if (!zoomout_button) {
                 updateStatus(`${new Date().toISOString()}] Zoom out button not found within the timeout period.`);
                 return; // Stop further execution
             }
-            await delay(500);
-            for (let i = 0; i < 10; i++) {
+            await delay(10);
+            for (let i = 0; i < 15; i++) {
                 zoomout_button.click();
-                await delay(5);
+                await delay(0);
             }
-            updateStatus(`[${new Date().toISOString()}] Finished navigation to the map.`);
-            await checkAvailabilityAndPlaySound();
+            updateStatus(`[${new Date().toISOString()}] Finished navigation.`);
+            await checkAvailability();
         } catch (error) {
             updateStatus(`[${new Date().toISOString()}] Error during button click sequence: ${error.message}`);
             console.error(error);
@@ -269,86 +336,101 @@
             checkForElement();
         });
     }
-    async function checkAvailabilityAndPlaySound() {
-    updateStatus(`[${new Date().toISOString()}] Starting availability check...`);
-    try {
-        updateStatus(`[${new Date().toISOString()}] Waiting for app-slot-list-viewContainer...`);
-        const container = await waitForElement("div.app-slot-list-viewContainer", 30000);
-        updateStatus(`[${new Date().toISOString()}] app-slot-list-viewContainer found`);
-
-        updateStatus(`[${new Date().toISOString()}] Waiting for swiper-wrapper...`);
-        const swiperWrapper = await waitForElement(".swiper-wrapper", 30000);
-        updateStatus(`[${new Date().toISOString()}] swiper-wrapper found`);
-
-        let availabilityFound = false;
-        let availabilityTexts = [];
-        let noAvailabilityCount = 0;
-
-        const maxAttempts = 10;
-        for (let attempt = 0; attempt < maxAttempts; attempt++) {
-            updateStatus(`[${new Date().toISOString()}] Checking slides (Attempt ${attempt + 1}/${maxAttempts})...`);
-            const slides = swiperWrapper.querySelectorAll("div[data-swiper-slide-index]");
-            updateStatus(`[${new Date().toISOString()}] Found ${slides.length} slides.`);
-            noAvailabilityCount = 0;
-            availabilityFound = false;
-            availabilityTexts = [];
-            slides.forEach((slide, index) => {
-                const availabilityText = slide.textContent.trim();
-                /* console.log(`[${new Date().toISOString()}] Slide ${index + 1}: Availability Text: "${availabilityText}"`); */
-
-                if (availabilityText.includes("No availability at present")) {
-                    noAvailabilityCount++;
-                } else if (availabilityText && !availabilityText.includes("No availability at present")) {
-                    availabilityFound = true;
-                    availabilityTexts.push(availabilityText); // Collect availability text
+    async function checkAvailability() {
+        updateStatus(`[${new Date().toISOString()}] Starting availability check...`);
+        try {
+            updateStatus(`[${new Date().toISOString()}] Waiting for app-slot-list-viewContainer...`);
+            const container = await waitForElement("div.app-slot-list-viewContainer", 30000);
+            updateStatus(`[${new Date().toISOString()}] app-slot-list-viewContainer found`);
+    
+            updateStatus(`[${new Date().toISOString()}] Waiting for swiper-wrapper...`);
+            const swiperWrapper = await waitForElement(".swiper-wrapper", 30000);
+            updateStatus(`[${new Date().toISOString()}] swiper-wrapper found`);
+    
+            let availabilityFound = false;
+            let availabilityTexts = [];
+            let noAvailabilityCount = 0;
+            let targetSlideIndex = null;
+    
+            const maxAttempts = 10;
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                updateStatus(`[${new Date().toISOString()}] Checking slides (Attempt ${attempt + 1}/${maxAttempts})...`);
+                const slides = swiperWrapper.querySelectorAll("div[data-swiper-slide-index]");
+                updateStatus(`[${new Date().toISOString()}] Found ${slides.length} slides.`);
+                noAvailabilityCount = 0;
+                availabilityFound = false;
+                availabilityTexts = [];
+                targetSlideIndex = null;
+    
+                slides.forEach((slide, index) => {
+                    const availabilityText = slide.textContent.trim();
+                    if (availabilityText.includes("No availability at present")) {
+                        noAvailabilityCount++;
+                    } else if (availabilityText && !availabilityText.includes("No availability at present")) {
+                        availabilityFound = true;
+                        availabilityTexts.push(availabilityText); // Collect availability text
+                        if (!targetSlideIndex) {
+                            targetSlideIndex = slide.getAttribute("data-swiper-slide-index");
+                        }
+                    }
+                });
+    
+                if (noAvailabilityCount >= 50) {
+                    updateStatus(`[${new Date().toISOString()}] Slides fully loaded.`);
+                    break;
+                } else if (noAvailabilityCount === 0) {
+                    updateStatus(`[${new Date().toISOString()}] No "No availability at present" messages found. Slides may not be fully loaded. Waiting 5 seconds...`);
+                    const button = document.querySelector('button[aria-label="Zoom out"][title="Zoom out"]');
+                    for (let i = 0; i < 3; i++) {
+                        button.click();
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 5000));
+                } else {
+                    updateStatus(`[${new Date().toISOString()}] Slides partially loaded (${noAvailabilityCount} 'No availability' messages). Waiting 5 seconds...`);
+                    const button = document.querySelector('button[aria-label="Zoom out"][title="Zoom out"]');
+                    for (let i = 0; i < 3; i++) {
+                        button.click();
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 5000));
                 }
-            });
-            if (noAvailabilityCount >= 50) {
-                updateStatus(`[${new Date().toISOString()}] Slides fully loaded.`);
-                break;
-            } else if (noAvailabilityCount === 0) {
-                updateStatus(`[${new Date().toISOString()}] No "No availability at present" messages found. Slides may not be fully loaded. Waiting 5 seconds...`);
-                const button = document.querySelector('button[aria-label="Zoom out"][title="Zoom out"]');
-                for (let i = 0; i < 3; i++) {
-                    button.click();
-                }
-                await new Promise(resolve => setTimeout(resolve, 5000));
-            } else {
-                updateStatus(`[${new Date().toISOString()}] Slides partially loaded (${noAvailabilityCount} 'No availability' messages). Waiting 5 seconds...`);
-                const button = document.querySelector('button[aria-label="Zoom out"][title="Zoom out"]');
-                for (let i = 0; i < 3; i++) {
-                    button.click();
-                }
-                await new Promise(resolve => setTimeout(resolve, 5000));
             }
-        }
-        if (availabilityFound) {
-            updateStatus(`[${new Date().toISOString()}] Availability detected! Playing beep...`);
-            playFallbackBeep();
-            // Send message to Teams with availability text
-            sendTeamsMessage(`Availability found! Details:<br>${availabilityTexts.join('<br>')}`);
-            return true;
-        } else {
-            updateStatus(`[${new Date().toISOString()}] No availability found.`);
+    
+            if (availabilityFound && targetSlideIndex !== null) {
+                updateStatus(`[${new Date().toISOString()}] Availability detected in slide ${targetSlideIndex}!`);
+                document.querySelector(`div[data-swiper-slide-index="${targetSlideIndex}"] button`).click();
+                updateStatus(`[${new Date().toISOString()}] Clicked on slide ${targetSlideIndex}`);
+    
+                const selectCentreButton = [...document.querySelectorAll('button')].find(btn => btn.textContent.includes('Select Centre'));
+                if (selectCentreButton) {
+                    selectCentreButton.click();
+                    updateStatus(`[${new Date().toISOString()}] "Select Centre" button clicked.`);
+                } else {
+                    updateStatus(`[${new Date().toISOString()}] "Select Centre" button not found.`);
+                }
+    
+                const confirmButton = await waitForElement('button[uid="no-parent-confirm-button"]', 10000);
+                if (confirmButton) {
+                    if (confirmButton.disabled) {
+                        confirmButton.removeAttribute('disabled');
+                        updateStatus(`[${new Date().toISOString()}] "Confirm" button was disabled. Enabled it.`);
+                    }
+                    confirmButton.click();
+                    updateStatus(`[${new Date().toISOString()}] "Confirm" button clicked.`);
+                } else {
+                    updateStatus(`[${new Date().toISOString()}] "Confirm" button not found.`);
+                }
+    
+                sendNotification(`Availability found and attempted selection! Details:<br>${availabilityTexts.join('<br>')}<br>Please proceed.`);
+                return true;
+            } else {
+                updateStatus(`[${new Date().toISOString()}] No availability found.`);
+                return false;
+            }
+        } catch (error) {
+            updateStatus(`[${new Date().toISOString()}] Error: ${error.message}`);
             return false;
         }
-    } catch (error) {
-        updateStatus(`[${new Date().toISOString()}] Error: ${error.message}`);
-        return false;
     }
-}
-
-    function playFallbackBeep() {
-        const context = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = context.createOscillator();
-        const gainNode = context.createGain();
-        oscillator.type = "square";
-        oscillator.frequency.setValueAtTime(500, context.currentTime);
-        gainNode.gain.setValueAtTime(0.5, context.currentTime);
-        oscillator.connect(gainNode);
-        gainNode.connect(context.destination);
-        oscillator.start();
-        setTimeout(() => oscillator.stop(), 500);
-    }
+    
     mainLoop();
 })();
