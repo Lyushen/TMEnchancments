@@ -2,7 +2,7 @@
 // @name         RSA Availability Checker
 // @namespace    http://tampermonkey.net/
 // @icon         https://www.google.com/s2/favicons?sz=128&domain=https://rsa.ie
-// @version      1.351
+// @version      1.352
 // @description  Automatically navigates through rsa.ie and myroadsafety.rsa.ie to check availability slots.
 // @author       Lyushen
 // @license      GNU
@@ -26,6 +26,7 @@
 (function () {
     'use strict';
     console.log(`[${new Date().toISOString()}] Script started...`);
+    
     
     function getPreferredWebhookUrl() {
         let preferredNotificator = GM_getValue('preferredNotificator', '');
@@ -62,6 +63,7 @@
             }
         }
     }
+    
     
     function sendNotification(message) {
         try {
@@ -384,6 +386,7 @@
                 zoomout_button.click();
                 await delay(0);
             }
+            await delay(1000);
             updateStatus(`[${new Date().toISOString()}] Finished navigation.`);
             await checkAvailability();
         } catch (error) {
