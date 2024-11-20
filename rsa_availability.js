@@ -149,7 +149,6 @@
             updateStatus(`[${new Date().toISOString()}] Failed to acquire screen wake lock: ${err.message}`);
         }
     }
-
     async function releaseWakeLock() {
         if (wakeLock) {
             try {
@@ -161,17 +160,15 @@
             }
         }
     }
-
     // Automatically request the wake lock at the start of the script
     requestWakeLock();
-
     // Clean up wake lock when the page unloads
     window.addEventListener('beforeunload', releaseWakeLock);
 
     const instantPressing = true;
     const statusOverlay = document.createElement('div');
     statusOverlay.style.position = 'fixed';
-    statusOverlay.style.bottom = '0'; // Change bottom to top statusOverlay.style.top = '0'; 
+    statusOverlay.style.bottom = '0'; // Change bottom to top statusOverlay.style.top = '0';
     statusOverlay.style.left = '0';
     statusOverlay.style.width = '100%';
     statusOverlay.style.maxHeight = '200px';
@@ -182,6 +179,7 @@
     statusOverlay.style.zIndex = '9999';
     statusOverlay.style.overflowY = 'auto';
     document.body.appendChild(statusOverlay);
+
     const logEntries = [];
     function updateStatus(message) {
         logEntries.push(message);
@@ -189,6 +187,37 @@
         statusOverlay.scrollTop = statusOverlay.scrollHeight;
         console.log(message);
     }
+
+    // Create toggle button
+    const toggleButton = document.createElement('button');
+    toggleButton.innerText = 'Hide Log';
+    toggleButton.style.position = 'fixed';
+    toggleButton.style.bottom = '0';
+    toggleButton.style.right = '0';
+    toggleButton.style.zIndex = '10000';
+    toggleButton.style.padding = '5px 10px';
+    toggleButton.style.backgroundColor = '#444';
+    toggleButton.style.color = 'white';
+    toggleButton.style.border = 'none';
+    toggleButton.style.cursor = 'pointer';
+    toggleButton.style.fontSize = '12px';
+    toggleButton.style.borderRadius = '4px';
+
+    // Add toggle functionality
+    let isOverlayVisible = true;
+    toggleButton.addEventListener('click', () => {
+        isOverlayVisible = !isOverlayVisible;
+        if (isOverlayVisible) {
+            statusOverlay.style.display = 'block';
+            toggleButton.innerText = 'Hide Log';
+        } else {
+            statusOverlay.style.display = 'none';
+            toggleButton.innerText = 'Show Log';
+        }
+    });
+
+    document.body.appendChild(toggleButton);
+
     async function mainLoop() {
         let availabilityFound = false;
         do {
