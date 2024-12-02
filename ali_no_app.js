@@ -7,8 +7,8 @@
 // @namespace    https://github.com/Lyushen
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
-// @updateURL    https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/DoneDeal_Optimisations.js
-// @downloadURL  https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/DoneDeal_Optimisations.js
+// @updateURL    https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/ali_no_app.js
+// @downloadURL  https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/ali_no_app.js
 // @author       Lyushen
 // @license      GNU
 // @match        *://*.aliexpress.com/*
