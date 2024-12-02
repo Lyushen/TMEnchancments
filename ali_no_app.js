@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Block AliExpress Protocol Handler
 // @namespace    http://tampermonkey.net/
-// @version      1.001
+// @version      1.002
 // @description  Block all attempts to call the aliexpress:// protocol while keeping the website functional.
 // @icon         https://www.google.com/s2/favicons?sz=128&domain=https://aliexpress.com
 // @namespace    https://github.com/Lyushen
