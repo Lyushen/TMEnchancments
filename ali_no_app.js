@@ -12,6 +12,8 @@
 // @author       Lyushen
 // @license      GNU
 // @match        *://*.aliexpress.com/*
+// @match        *://*.allylikes.com/*
+// @match        *://aliexpress.sjv.io/*
 // @grant        none
 // ==/UserScript==
 
@@ -19,66 +21,86 @@
     'use strict';
 
     /**
-     * Block hrefs or dynamically injected scripts that attempt to use aliexpress:// protocol.
-     * This method ensures that even obfuscated or indirect calls are intercepted.
+     * List of protocols and domains to block.
      */
+    const blockedProtocols = ["aliexpress://", "allylikes://"];
+    const blockedDomains = [
+        "aeappsa.onelink.me",
+        "aliexpress.sjv.io",
+        "aliexpress.us",
+    ];
 
-    // Utility: Prevent navigation to aliexpress://
-    function isAliExpressProtocol(url) {
-        return typeof url === "string" && url.startsWith("aliexpress://");
+    /**
+     * Utility function to determine if a URL uses a blocked protocol or domain.
+     */
+    function isBlockedURL(url) {
+        if (typeof url !== "string") return false;
+        return (
+            blockedProtocols.some(protocol => url.startsWith(protocol)) ||
+            blockedDomains.some(domain => url.includes(domain))
+        );
     }
 
-    // Intercept clicks on anchor tags
+    // Block clicks on anchor tags with blocked URLs
     document.addEventListener("click", (event) => {
         const target = event.target.closest("a");
-        if (target && isAliExpressProtocol(target.href)) {
+        if (target && isBlockedURL(target.href)) {
             event.preventDefault();
-            console.warn("Blocked aliexpress:// protocol on click:", target.href);
+            console.warn(`Blocked ${target.href} on click.`);
         }
-    });
+    }, true);
 
-    // Intercept window.open calls
+    // Block attempts to open blocked URLs via window.open
     const originalOpen = window.open;
     window.open = function (url, ...args) {
-        if (isAliExpressProtocol(url)) {
-            console.warn("Blocked aliexpress:// protocol via window.open:", url);
+        if (isBlockedURL(url)) {
+            console.warn(`Blocked ${url} via window.open.`);
             return null;
         }
         return originalOpen.call(this, url, ...args);
     };
 
-    // Intercept location changes (e.g., window.location.href = "aliexpress://...")
+    // Block attempts to use location.href, location.assign, or location.replace with blocked URLs
     const originalAssign = window.location.assign;
     const originalReplace = window.location.replace;
-    window.location.assign = function (url) {
-        if (isAliExpressProtocol(url)) {
-            console.warn("Blocked aliexpress:// protocol via location.assign:", url);
-            return;
-        }
-        originalAssign.call(this, url);
-    };
-    window.location.replace = function (url) {
-        if (isAliExpressProtocol(url)) {
-            console.warn("Blocked aliexpress:// protocol via location.replace:", url);
-            return;
-        }
-        originalReplace.call(this, url);
-    };
+    Object.defineProperty(window.location, "assign", {
+        value: function (url) {
+            if (isBlockedURL(url)) {
+                console.warn(`Blocked ${url} via location.assign.`);
+                return;
+            }
+            originalAssign.call(this, url);
+        },
+        writable: false,
+        configurable: false,
+    });
 
-    // Intercept dynamically created anchor elements
+    Object.defineProperty(window.location, "replace", {
+        value: function (url) {
+            if (isBlockedURL(url)) {
+                console.warn(`Blocked ${url} via location.replace.`);
+                return;
+            }
+            originalReplace.call(this, url);
+        },
+        writable: false,
+        configurable: false,
+    });
+
+    // Block dynamically created links or scripts invoking blocked URLs
     const observer = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
             mutation.addedNodes.forEach((node) => {
-                if (node.tagName === "A" && isAliExpressProtocol(node.href)) {
-                    console.warn("Blocked dynamically added aliexpress:// link:", node.href);
-                    node.href = "javascript:void(0);";
+                if (node.tagName === "A" && isBlockedURL(node.href)) {
+                    console.warn(`Blocked dynamically added ${node.href} link.`);
+                    node.href = "javascript:void(0);"; // Neutralize the link
                 }
-                // Check for script tags attempting protocol navigation
                 if (node.tagName === "SCRIPT") {
                     const scriptContent = node.textContent || "";
-                    if (scriptContent.includes("aliexpress://")) {
-                        console.warn("Blocked script with aliexpress:// protocol.");
-                        node.parentNode.removeChild(node); // Remove script
+                    if (blockedProtocols.some(protocol => scriptContent.includes(protocol)) ||
+                        blockedDomains.some(domain => scriptContent.includes(domain))) {
+                        console.warn("Blocked dynamically added script containing blocked URLs.");
+                        node.parentNode.removeChild(node); // Remove the script
                     }
                 }
             });
@@ -90,15 +112,26 @@
         subtree: true,
     });
 
-    // Override setAttribute to block protocol injection via attributes
+    // Block setAttribute for href attributes with blocked URLs
     const originalSetAttribute = Element.prototype.setAttribute;
     Element.prototype.setAttribute = function (name, value) {
-        if (name === "href" && isAliExpressProtocol(value)) {
-            console.warn("Blocked aliexpress:// protocol via setAttribute:", value);
+        if (name === "href" && isBlockedURL(value)) {
+            console.warn(`Blocked ${value} via setAttribute.`);
             return;
         }
         originalSetAttribute.call(this, name, value);
     };
 
-    console.info("AliExpress protocol blocker is active.");
+    // Intercept event delegation at higher levels for obfuscated or delayed clicks
+    document.addEventListener("mousedown", (event) => {
+        const target = event.target.closest("a");
+        if (target && isBlockedURL(target.href)) {
+            event.preventDefault();
+            console.warn(`Blocked ${target.href} on mousedown.`);
+        }
+    }, true);
+
+    console.info("Protocol and domain blocker is active for:");
+    console.info("Blocked Protocols:", blockedProtocols.join(", "));
+    console.info("Blocked Domains:", blockedDomains.join(", "));
 })();
