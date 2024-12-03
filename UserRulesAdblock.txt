@@ -70,4 +70,4 @@ chatgpt.com##div > span:has-text(ChatGPT can make mistakes. Check important info
 4pda.to##.yt-p-gradient
 rustorka.com##+js(set-constant, document.write, noopFunc)
 aliexpress.com##div.AIC-MMA-container
-aliexpress.com##.header-float-banner
+aliexpress.com##div#header div#header-float-banner
