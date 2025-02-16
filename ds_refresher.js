@@ -17,10 +17,10 @@
     'use strict';
 
     const config = {
-        textWaitDelay: 500,    // Delay before checking text
-        retryDelay: 500,       // Delay before clicking retry button
-        checkInterval: 1000,    // Main loop interval
-        waitForResponse: 2000,  // Time to wait for response after clicking
+        initialDelay: 500,    // Delay before first retry attempt after message appears
+        checkInterval: 1000,  // How often to check for busy message
+        retryDelay: 500,     // Delay between retry attempts
+        waitForResponse: 2000, // Time to wait for response after clicking
         debug: true
     };
 
@@ -30,44 +30,34 @@
         }
     }
 
-    // Helper function to create delays
-    function delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
     function getLastChatTopic() {
         const chatTopics = document.querySelectorAll('[class*="f9bf7997"][class*="d7dc56a8"]');
-        debugLog('Found chat topics:', chatTopics.length);
-        
-        if (chatTopics.length === 0) {
-            return null;
-        }
-
-        const lastTopic = chatTopics[chatTopics.length - 1];
-        debugLog('Last topic:', lastTopic);
-        return lastTopic;
+        return chatTopics.length > 0 ? chatTopics[chatTopics.length - 1] : null;
     }
 
-    async function findBusyMessage() {
-        // Wait before checking the text
-        await delay(config.textWaitDelay);
-        
+    function isButtonVisible(button) {
+        if (!button) return false;
+
+        const rect = button.getBoundingClientRect();
+        const isVisible = rect.width > 0 &&
+                         rect.height > 0 &&
+                         button.style.display !== 'none' &&
+                         button.style.visibility !== 'hidden';
+
+        debugLog('Button visibility check:', isVisible);
+        return isVisible;
+    }
+
+    function findBusyMessage() {
         const lastTopic = getLastChatTopic();
-        if (!lastTopic) {
-            debugLog('No chat topics found');
-            return null;
-        }
+        if (!lastTopic) return null;
 
         const markdownBlocks = lastTopic.querySelectorAll('.ds-markdown.ds-markdown--block');
-        debugLog('Found markdown blocks:', markdownBlocks.length);
-
         const lastBlock = markdownBlocks[markdownBlocks.length - 1];
+
         if (lastBlock && lastBlock.textContent.includes('The server is busy. Please try again later.')) {
-            debugLog('Found busy message:', lastBlock.textContent);
             return lastBlock;
         }
-
-        debugLog('No busy message found in last topic');
         return null;
     }
 
@@ -76,37 +66,26 @@
         if (!lastTopic) return null;
 
         const buttons = Array.from(lastTopic.querySelectorAll('.ds-icon-button'));
-        debugLog('Found buttons:', buttons.length);
-
-        const retryButtons = buttons.filter(button => 
+        const retryButtons = buttons.filter(button =>
             button.style.getPropertyValue('--ds-icon-button-size') === '20px'
         );
 
-        if (retryButtons.length >= 2) {
-            debugLog('Found retry button (second):', retryButtons[1]);
-            return retryButtons[1];
-        }
-
-        debugLog('No retry button found');
-        return null;
+        return retryButtons.length >= 2 ? retryButtons[1] : null;
     }
 
     async function waitForNextRetry() {
         return new Promise(resolve => {
-            const checkForNewState = async () => {
+            const checkForNewState = () => {
                 const lastTopic = getLastChatTopic();
                 if (!lastTopic) {
                     setTimeout(checkForNewState, 100);
                     return;
                 }
 
-                // Add delay before checking for new message
-                await delay(config.textWaitDelay);
-
                 const hasNewMessage = lastTopic.querySelector('.ds-markdown.ds-markdown--block');
-                const hasRetryButton = findRetryButton();
+                const retryButton = findRetryButton();
 
-                if (hasNewMessage || hasRetryButton) {
+                if (hasNewMessage || (retryButton && isButtonVisible(retryButton))) {
                     debugLog('System ready for next retry');
                     resolve();
                 } else {
@@ -118,37 +97,60 @@
         });
     }
 
+    let retryTimeout = null;
+    let isRetrying = false;
+    let lastMessageTimestamp = 0;
+
     async function attemptRetry() {
         const retryButton = findRetryButton();
-        if (retryButton) {
-            // Wait before clicking the retry button
-            await delay(config.retryDelay);
-            
+
+        if (retryButton && isButtonVisible(retryButton)) {
             debugLog('Clicking retry button');
             retryButton.click();
-            
+
             debugLog('Waiting for system to be ready for next retry');
             await waitForNextRetry();
-            
+
             debugLog('Completed retry attempt');
+        } else {
+            debugLog('Retry button not visible or not found, stopping retry cycle');
+            clearTimeout(retryTimeout);
+            isRetrying = false;
         }
     }
 
-    let isRetrying = false;
-
-    async function watchForBusyServer() {
+async function watchForBusyServer() {
         if (isRetrying) {
             debugLog('Already processing a retry, skipping check');
             return;
         }
 
-        debugLog('Checking for busy server...');
-        const busyMessage = await findBusyMessage();
-        
+        const busyMessage = findBusyMessage();
+        const currentTime = Date.now();
+
         if (busyMessage) {
-            debugLog('Server busy message detected, attempting retry');
-            isRetrying = true;
-            await attemptRetry();
+            // Check if this is a new message
+            if (currentTime - lastMessageTimestamp > config.checkInterval) {
+                debugLog('New busy message detected, scheduling retry');
+                lastMessageTimestamp = currentTime;
+                isRetrying = true;
+
+                // Initial delay before first retry
+                retryTimeout = setTimeout(async () => {
+                    const retryButton = findRetryButton();
+                    if (retryButton && isButtonVisible(retryButton)) {
+                        await attemptRetry();
+                    }
+                    isRetrying = false;
+                }, config.initialDelay);
+            }
+        } else {
+            // Clear any pending retry if the message is gone
+            if (retryTimeout) {
+                debugLog('Busy message no longer present, clearing retry timeout');
+                clearTimeout(retryTimeout);
+                retryTimeout = null;
+            }
             isRetrying = false;
         }
     }
