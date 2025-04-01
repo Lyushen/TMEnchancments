@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.0002
+// @version      1.0003
 // @description  Automatically retry when DeepSeek chat server is busy
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -31,7 +31,7 @@
     }
 
     function getLastChatTopic() {
-        const chatTopics = document.querySelectorAll('[class*="f9bf7997"][class*="d7dc56a8"]');
+        const chatTopics = document.querySelectorAll('[class*="_4f9bf79"][class*="d7dc56a8"]');
         return chatTopics.length > 0 ? chatTopics[chatTopics.length - 1] : null;
     }
 
