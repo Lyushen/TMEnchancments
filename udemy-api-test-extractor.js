@@ -4,12 +4,12 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.1001
+// @version      1.1002
 // @description  Sequential test extraction with proper numbering
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
-// @updateURL    https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/udemy-api-test-extractor.js
-// @downloadURL  https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/udemy-api-test-extractor.js
+// @updateURL    https://raw.githubusercontent.com/Lyushen/TMEnchancments/refs/heads/main/udemy-api-test-extractor.js
+// @downloadURL  https://raw.githubusercontent.com/Lyushen/TMEnchancments/refs/heads/main/udemy-api-test-extractor.js
 // @match        https://ibmcsr.udemy.com/course/*
 // @grant        GM_download
 // @grant        GM_log
