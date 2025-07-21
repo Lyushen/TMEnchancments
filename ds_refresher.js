@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.0004
+// @version      1.0005
 // @description  Automatically retry when DeepSeek chat server is busy
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -16,9 +16,9 @@
 (function() {
     'use strict';
     const config = {
-        checkInterval: 1000,
-        timeout: 30000,
-        debug: true
+        checkInterval: 1000,  // How often to check for the button (in ms)
+        timeout: 30000,       // Maximum time to wait for the button (in ms)
+        debug: true           // Whether to log debug messages
     };
     function debugLog(...args) {
         if (config.debug) {
@@ -36,6 +36,10 @@
         return isVisible;
     }
     function findTargetButton() {
+        // Look for a button with the structure:
+        // div.ds-icon-button (with any additional classes)
+        //   div.ds-icon
+        //     svg with width="24", height="24", viewBox="0 0 24 24"
         const buttons = document.querySelectorAll('div.ds-icon-button');
         for (const button of buttons) {
             const iconDiv = button.querySelector('div.ds-icon');
@@ -60,7 +64,7 @@
                 const button = findTargetButton();
                 if (button && isButtonVisible(button)) {
                     debugLog('Target button found and visible, applying changes');
-                    callback(button);
+                    callback(button); // Perform the user-defined action on the button
                     resolve();
                 } else if (Date.now() - startTime > config.timeout) {
                     debugLog('Timeout reached, button not found');
