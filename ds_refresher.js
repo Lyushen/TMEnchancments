@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.0007
+// @version      1.0008
 // @description  Automatically retry when DeepSeek chat server is busy
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -16,151 +16,165 @@
 (function() {
     'use strict';
     const config = {
-        checkInterval: 1000,  // How often to check for the button (in ms)
-        timeout: 30000,       // Maximum time to wait for the button (in ms)
-        debug: true,          // Whether to log debug messages
-        buttonSignature: 'div.ds-icon-button div.ds-icon > svg[width="24"][height="24"][viewBox="0 0 24 24"]'
+        checkInterval: 1000,  // Check every 1 second
+        debug: true,          // Enable detailed logging
+        maxShadowDepth: 5     // Maximum shadow DOM depth to search
     };
 
-    // Unique identifier for tracking
+    // Unique tracking identifiers
     const sessionId = Math.random().toString(36).substring(2, 10);
-    let attemptCount = 0;
+    let lastFoundButton = null;
 
     function debugLog(...args) {
         if (config.debug) {
-            console.log(`[ButtonWaiter:${sessionId}]`, ...args);
+            console.log(`[ButtonWatcher:${sessionId}]`, ...args);
         }
     }
 
     function isButtonVisible(button) {
         if (!button) return false;
-        const style = getComputedStyle(button);
-        const rect = button.getBoundingClientRect();
         
-        const isVisible = rect.width > 0 &&
-                         rect.height > 0 &&
-                         style.display !== 'none' &&
-                         style.visibility !== 'hidden' &&
-                         style.opacity !== '0';
-        
-        debugLog('Visibility check:', isVisible, button);
-        return isVisible;
-    }
-
-    function findTargetButton() {
-        attemptCount++;
-        const candidates = [];
-        
-        // Main document search
-        findButtonsInRoot(document, candidates);
-        
-        // Search in shadow DOMs
-        document.querySelectorAll('*').forEach(el => {
-            if (el.shadowRoot) {
-                findButtonsInRoot(el.shadowRoot, candidates);
-            }
-        });
-        
-        debugLog(`Scan #${attemptCount} found ${candidates.length} candidates`);
-        return candidates.find(btn => isButtonVisible(btn)) || null;
-    }
-
-    function findButtonsInRoot(root, collection) {
         try {
-            const buttons = root.querySelectorAll(config.buttonSignature);
-            buttons.forEach(btn => {
-                // Traverse up to find the actual button container
-                let buttonContainer = btn.closest('div.ds-icon-button');
-                if (buttonContainer) {
-                    collection.push(buttonContainer);
-                }
-            });
+            const style = getComputedStyle(button);
+            const rect = button.getBoundingClientRect();
+            
+            // Check basic visibility properties
+            const isVisible = (
+                style.display !== 'none' &&
+                style.visibility !== 'hidden' &&
+                style.opacity !== '0' &&
+                rect.width > 0 &&
+                rect.height > 0
+            );
+            
+            // Check if in viewport (optional but recommended)
+            const inViewport = (
+                rect.top >= 0 &&
+                rect.left >= 0 &&
+                rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+                rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+            );
+            
+            debugLog('Visibility check:', {isVisible, inViewport, display: style.display});
+            return isVisible && inViewport;
         } catch (e) {
-            debugLog('Query error in root:', e);
+            debugLog('Visibility check error:', e);
+            return false;
         }
     }
 
-    function waitForButtonAndClick() {
-        return new Promise((resolve, reject) => {
-            const startTime = Date.now();
+    function findButtonInRoot(root) {
+        try {
+            // Efficient CSS selector to target the specific button structure
+            const selector = 'div.ds-icon-button div.ds-icon > svg[width="24"][height="24"][viewBox="0 0 24 24"]';
+            const svgs = root.querySelectorAll(selector);
             
-            const check = () => {
-                const button = findTargetButton();
+            for (const svg of svgs) {
+                const iconDiv = svg.closest('div.ds-icon');
+                if (!iconDiv) continue;
                 
-                if (button && isButtonVisible(button)) {
-                    try {
-                        debugLog('Clicking button:', button);
-                        logButtonDetails(button);
-                        button.click();
-                        resolve();
-                        return;
-                    } catch (e) {
-                        debugLog('Click failed:', e);
-                    }
-                }
-                
-                // Timeout check
-                if (Date.now() - startTime > config.timeout) {
-                    debugLog('Timeout reached. Button not found');
-                    reject('Timeout waiting for button');
-                    return;
-                }
-                
-                // Schedule next check
-                setTimeout(check, config.checkInterval);
-            };
-            
-            check();
-        });
+                const button = iconDiv.closest('div.ds-icon-button');
+                if (button) return button;
+            }
+        } catch (e) {
+            debugLog('Search error in root:', e);
+        }
+        return null;
     }
 
-    function logButtonDetails(button) {
-        const details = {
-            sessionId,
-            classes: button.className,
-            html: button.outerHTML.slice(0, 200) + '...',
-            path: getDomPath(button),
-            foundAt: new Date().toISOString()
-        };
+    function searchAllRoots() {
+        const roots = [document];
         
-        console.groupCollapsed(`[ButtonWaiter:${sessionId}] Button Clicked`);
-        console.table(details);
+        // BFS for shadow roots
+        const queue = [{root: document, depth: 0}];
+        while (queue.length > 0) {
+            const {root, depth} = queue.shift();
+            
+            if (depth > config.maxShadowDepth) continue;
+            
+            const elements = root.querySelectorAll('*');
+            for (const el of elements) {
+                if (el.shadowRoot) {
+                    roots.push(el.shadowRoot);
+                    queue.push({root: el.shadowRoot, depth: depth + 1});
+                }
+            }
+        }
+        
+        // Search through all found roots
+        for (const root of roots) {
+            const button = findButtonInRoot(root);
+            if (button) return button;
+        }
+        
+        return null;
+    }
+
+    function handleButton(button) {
+        // Generate unique fingerprint for the button
+        const buttonId = btoa(button.outerHTML).substring(0, 16);
+        const isSameButton = lastFoundButton === buttonId;
+        lastFoundButton = buttonId;
+        
+        // Log detailed information
+        console.groupCollapsed(`[ButtonWatcher:${sessionId}] Button found ${isSameButton ? '(same)' : '(new)'}`);
+        console.log('Button ID:', buttonId);
+        console.log('Classes:', button.className);
+        console.log('HTML snippet:', button.outerHTML.slice(0, 200) + '...');
+        console.log('Visibility state:', isButtonVisible(button) ? 'Visible' : 'Hidden');
         console.log('Full element:', button);
         console.groupEnd();
-    }
 
-    function getDomPath(element) {
-        const path = [];
-        while (element) {
-            let selector = element.nodeName.toLowerCase();
-            
-            if (element.id) {
-                selector += `#${element.id}`;
-                path.unshift(selector);
-                break;
-            } else {
-                let sibling = element;
-                let nth = 1;
-                while (sibling.previousElementSibling) {
-                    sibling = sibling.previousElementSibling;
-                    nth++;
-                }
-                if (nth !== 1) selector += `:nth-child(${nth})`;
-            }
-            path.unshift(selector);
-            element = element.parentElement;
+        // Only click if visible
+        if (isButtonVisible(button)) {
+            debugLog('Clicking button');
+            button.click();
+            return true;
         }
-        return path.join(' > ');
+        
+        debugLog('Button found but not visible');
+        return false;
     }
 
-    // Initialize
-    debugLog('Script started', {
+    function startWatching() {
+        debugLog('Starting persistent watcher');
+        
+        const watch = () => {
+            try {
+                const button = searchAllRoots();
+                if (button) {
+                    handleButton(button);
+                } else {
+                    debugLog('Button not found in current DOM');
+                }
+            } catch (e) {
+                debugLog('Watch cycle error:', e);
+            }
+            setTimeout(watch, config.checkInterval);
+        };
+        
+        watch();
+    }
+
+    // Initialize with performance monitoring
+    debugLog('Initializing watcher', {
         sessionId,
-        config,
-        startTime: new Date().toISOString()
+        startTime: new Date().toISOString(),
+        checkInterval: config.checkInterval
     });
     
-    waitForButtonAndClick()
-        .then(() => debugLog('Button clicked successfully'))
-        .catch(err => debugLog('Error:', err));
+    // Start watching immediately
+    startWatching();
+    
+    // Also watch for DOM changes
+    const observer = new MutationObserver(() => {
+        debugLog('DOM mutation detected - triggering check');
+    });
+    
+    observer.observe(document, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        characterData: true
+    });
 })();
