@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.004
+// @version      1.007
 // @description  Hides elements using adblock-style rules fetched from a remote source
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -24,7 +24,7 @@
     const RULES_URL = 'https://raw.githubusercontent.com/Lyushen/TMEnchancments/refs/heads/main/UserRulesAdblock.txt';
     const STORAGE_KEY = 'elementHiderRules';
     const TIMESTAMP_KEY = 'elementHiderRulesTimestamp';
-    const UPDATE_INTERVAL = 6 * 60 * 60 * 1000; // 6 hours
+    const UPDATE_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
     const STYLE_ID = 'adblock-style-rules';
     
     // Create style element for rules
@@ -32,15 +32,15 @@
     styleElement.id = STYLE_ID;
     document.head.appendChild(styleElement);
     
-    // Load rules from storage or fetch from network
-    async function loadRules() {
+    // Main function to load and apply rules
+    async function loadAndApplyRules() {
         const lastUpdated = GM_getValue(TIMESTAMP_KEY, 0);
         const currentTime = Date.now();
         
         // Use cached rules if within update interval
         if (currentTime - lastUpdated < UPDATE_INTERVAL) {
-            const cachedRules = GM_getValue(STORAGE_KEY, []);
-            if (cachedRules.length > 0) {
+            const cachedRules = GM_getValue(STORAGE_KEY, '');
+            if (cachedRules) {
                 applyRules(cachedRules);
                 return;
             }
@@ -49,19 +49,18 @@
         try {
             // Fetch rules from remote source
             const rulesText = await fetchRules();
-            const rules = parseRules(rulesText);
             
-            // Save to storage
-            GM_setValue(STORAGE_KEY, rules);
+            // Save to storage as plain text
+            GM_setValue(STORAGE_KEY, rulesText);
             GM_setValue(TIMESTAMP_KEY, currentTime);
             
-            applyRules(rules);
-            console.log(`Adblock Hider: Loaded ${rules.length} rules`);
+            applyRules(rulesText);
+            console.log(`Adblock Hider: Loaded new rules at ${new Date().toLocaleTimeString()}`);
         } catch (error) {
             console.error('Adblock Hider: Failed to fetch rules', error);
             // Fallback to cached rules
-            const cachedRules = GM_getValue(STORAGE_KEY, []);
-            if (cachedRules.length > 0) {
+            const cachedRules = GM_getValue(STORAGE_KEY, '');
+            if (cachedRules) {
                 applyRules(cachedRules);
             }
         }
@@ -85,36 +84,44 @@
         });
     }
     
-    // Parse rules text into array
-    function parseRules(text) {
-        return text.split('\n')
-            .map(line => line.trim())
-            .filter(line => line && !line.startsWith('!') && line.includes('##'));
-    }
-    
     // Apply rules to current page
-    function applyRules(rules) {
+    function applyRules(rulesText) {
         const currentHost = window.location.hostname;
         let cssRules = '';
         
-        rules.forEach(rule => {
-            const [domainPattern, selector] = rule.split('##');
+        // Split rules into lines and process each one
+        rulesText.split('\n').forEach(line => {
+            const trimmedLine = line.trim();
+            
+            // Skip empty lines and comments
+            if (!trimmedLine || trimmedLine.startsWith('!')) {
+                return;
+            }
+            
+            // Split into domain pattern and selector
+            const [domainPattern, selector] = trimmedLine.split('##');
             if (!domainPattern || !selector) return;
             
-            // Create regex from domain pattern
+            // Create regex from domain pattern with wildcards
             const domainRegex = createDomainRegex(domainPattern);
             
             // Check if current host matches pattern
             if (domainRegex.test(currentHost)) {
-                cssRules += `${selector} { display: none !important; }\n`;
+                // Add CSS rule for each selector
+                selector.split(',').forEach(sel => {
+                    const trimmedSel = sel.trim();
+                    if (trimmedSel) {
+                        cssRules += `${trimmedSel} { display: none !important; }\n`;
+                    }
+                });
             }
         });
         
         // Apply CSS rules
         styleElement.textContent = cssRules;
         
-        // Handle dynamic content
-        if (cssRules) {
+        // Handle dynamic content if we have rules
+        if (cssRules && !window.adblockObserver) {
             setupMutationObserver();
         }
     }
@@ -131,20 +138,20 @@
     
     // Watch for DOM changes to apply rules to new elements
     function setupMutationObserver() {
-        const observer = new MutationObserver(mutations => {
+        window.adblockObserver = new MutationObserver(() => {
             // Reapply rules when DOM changes
-            const rules = GM_getValue(STORAGE_KEY, []);
-            if (rules.length > 0) {
-                applyRules(rules);
+            const cachedRules = GM_getValue(STORAGE_KEY, '');
+            if (cachedRules) {
+                applyRules(cachedRules);
             }
         });
         
-        observer.observe(document, {
+        window.adblockObserver.observe(document, {
             childList: true,
             subtree: true
         });
     }
     
     // Initialize
-    loadRules();
+    loadAndApplyRules();
 })();
