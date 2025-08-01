@@ -1,11 +1,11 @@
 // ==UserScript==
+// @name         Adblock in Script
+// @namespace    http://tampermonkey.net/
 // @icon         https://www.google.com/s2/favicons?sz=128&domain=https://adguard.com
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @name         Adblock Rules in Tampermonkey Script
-// @namespace    http://tampermonkey.net/
-// @version      1.002
+// @version      1.003
 // @description  Hides elements using adblock-style rules fetched from a remote source
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
