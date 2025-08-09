@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.03412
+// @version      1.03413
 // @description  Block specific first elements from 4pda.to
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -31,6 +31,16 @@
             blockStyle.innerHTML = rules;
             document.head.appendChild(blockStyle);
         }
+    };
+
+    // NEW FUNCTION: Hide slider containers with specific style pattern
+    const hideSliderContainers = () => {
+        document.querySelectorAll('[style*="overflow: hidden"][style*="height:"]').forEach(container => {
+            const sliderLists = container.querySelectorAll(':scope > .slider-list');
+            if (sliderLists.length >= 2) {
+                container.style.display = 'none';
+            }
+        });
     };
 
     const hideArticles = () => {
@@ -123,13 +133,14 @@
             cssRules += `
                 article:not(:has(> div:nth-child(3))) { display: none !important; }
                 *:has(> .slider-list + .slider-list + .slider-list) { display: none !important; }
-                .menu-brands { display: none !important; }  /* Additional rule to block elements with class "menu-brands" */
+                .menu-brands { display: none !important; }
             `;
 
             applyCSSRules(cssRules);
             pollDOM(() => {
                 hideArticles();
                 convertYouTubeOverlayToIframe();
+                hideSliderContainers();
             });
         }
     };
