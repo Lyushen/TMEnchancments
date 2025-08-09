@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.03413
+// @version      1.03414
 // @description  Block specific first elements from 4pda.to
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -24,7 +24,7 @@
     const storageTimeKey = 'storedKeywordsTimestamp';
     const cooldownPeriod = 20 * 1000; // 20 seconds in milliseconds
 
-    const applyCSSRules = (rules) => {
+     const applyCSSRules = (rules) => {
         if (!document.getElementById("customTampermonkeyStyles")) {
             const blockStyle = document.createElement('style');
             blockStyle.id = "customTampermonkeyStyles";
@@ -33,13 +33,40 @@
         }
     };
 
-    // NEW FUNCTION: Hide slider containers with specific style pattern
     const hideSliderContainers = () => {
         document.querySelectorAll('[style*="overflow: hidden"][style*="height:"]').forEach(container => {
             const sliderLists = container.querySelectorAll(':scope > .slider-list');
             if (sliderLists.length >= 2) {
                 container.style.display = 'none';
             }
+        });
+    };
+
+    // NEW FUNCTION: Adjust parent container and hide footers
+    const adjustLayout = () => {
+        // Find and adjust the specific container parent
+        const containers = document.querySelectorAll('div.container[itemscope][itemtype="http://schema.org/Article"][data-ztm]');
+        containers.forEach(container => {
+            const parent = container.parentElement;
+            if (parent) {
+                // Remove width restrictions
+                parent.style.width = 'auto';
+                parent.style.maxWidth = 'none';
+                parent.style.minWidth = '0';
+                
+                // Remove all inline width styles
+                parent.style.removeProperty('width');
+                parent.style.removeProperty('max-width');
+                parent.style.removeProperty('min-width');
+                
+                // Remove responsive classes that might set widths
+                parent.classList.remove('col-md-10', 'col-lg-8', 'col-xl-6', 'col-xxl-4');
+            }
+        });
+
+        // Hide all footer elements
+        document.querySelectorAll('footer').forEach(footer => {
+            footer.style.display = 'none';
         });
     };
 
@@ -134,6 +161,15 @@
                 article:not(:has(> div:nth-child(3))) { display: none !important; }
                 *:has(> .slider-list + .slider-list + .slider-list) { display: none !important; }
                 .menu-brands { display: none !important; }
+                
+                /* NEW: Hide all footers and adjust container parent */
+                footer { display: none !important; }
+                div.container[itemscope][itemtype="http://schema.org/Article"][data-ztm] ~ * { display: none; }
+                div.container[itemscope][itemtype="http://schema.org/Article"][data-ztm] {
+                    width: auto !important;
+                    max-width: none !important;
+                    min-width: 0 !important;
+                }
             `;
 
             applyCSSRules(cssRules);
@@ -141,6 +177,7 @@
                 hideArticles();
                 convertYouTubeOverlayToIframe();
                 hideSliderContainers();
+                adjustLayout(); // ADDED TO POLLING LOOP
             });
         }
     };
