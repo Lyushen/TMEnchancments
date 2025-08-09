@@ -71,3 +71,39 @@ chatgpt.com##div > span:has-text(ChatGPT can make mistakes. Check important info
 rustorka.com##+js(set-constant, document.write, noopFunc)
 aliexpress.com##div.AIC-MMA-container
 aliexpress.com##div#header div#header-float-banner
+
+! Ublock Origin Rules
+! 13 Dec 2024 https://www.deepl.com
+www.deepl.com##.ps-\[70px\].min-\[1440px\]\:ps-0.justify-between.items-center.flex.mobile\:hidden
+www.deepl.com##span.md\:inline-flex.empty\:hidden.hidden
+www.deepl.com##.font-medium.text-xs.py-0\.5.px-2.rounded-sm.inline-flex.font-redesign.text-green-next-700.bg-green-next-100
+www.deepl.com##.\[\.is-home_\&\]\:hidden
+www.deepl.com##.min-\[1400px\]\:px-\[100px\].min-\[1200px\]\:px-\[70px\].min-\[1000px\]\:px-\[50px\].min-\[840px\]\:px-\[30px\].sm\:px-\[20px\].max-w-\[1600px\].sm\:bottom-6.mx-auto.z-\[1000\].bottom-0.inset-x-0.fixed.pointer-events-auto
+www.deepl.com##.focus-visible-light-container.StickyBanner-module--stickyBanner--8b3fe.writeAdvertisementBanner-module--root--010cd.Banner-module--dialog--87ae4
+www.deepl.com##.empty\:hidden.z-20.right-2.bottom-2.fixed
+www.deepl.com##.gap-4.justify-center.sm\:items-center.items-start.flex.sm\:px-2\.5.sm\:py-2.py-3.px-4.bg-blue-next-100.z-40
+www.deepl.com##.focus-visible-light-container.StickyBanner-module--stickyBanner--8b3fe.Banner-module--dialog--87ae4
+www.deepl.com##.mobile\:mt-6.mt-9.min-\[1280px\]\:px-\[70px\]
+
+! 17 Dec 2024 https://www.deepl.com
+www.deepl.com###radix-\:
+www.deepl.com##.bg-gray-900\/50.z-\[9999\].inset-0.fixed
+
+! 29 Jan 2025 https://www.youtube.com
+www.youtube.com##ytd-rich-section-renderer.ytd-rich-grid-renderer.style-scope
+
+! 18 Feb 2025 https://claude.ai
+claude.ai##.z-10.absolute
+
+! 10 Apr 2025 https://ibmcsr.udemy.com
+ibmcsr.udemy.com##.mode-ribbon--ribbon-wrapper---aS2n.test-timer--ribbon--SIFkU
+ibmcsr.udemy.com##.share-feedback--share-feedback--dW11i
+ibmcsr.udemy.com##.curriculum-item-view--course-title--s5jCa
+
+! 23 Apr 2025 https://ibmcsr.udemy.com
+ibmcsr.udemy.com##.mc-quiz-question--container--dV-tK > span
+ibmcsr.udemy.com##.mc-quiz-question--toggle-mark-for-review---Gecj.popper-module--popper--mM5Ie
+
+! 9 Aug 2025 https://4pda.to
+4pda.to###footer
+4pda.to##.second-menu
