@@ -4,8 +4,8 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.03414
-// @description  Block specific first elements from 4pda.to
+// @version      1.03416
+// @description  Block elements on 4pda.to
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
 // @updateURL    https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/4pda_Optimisations.js
@@ -181,6 +181,54 @@
             });
         }
     };
+    // Function to remove 4pda background elements
+    function remove4pdaBackground() {
+        console.log('Searching for elements with 4pda background...');
+        
+        const allElements = document.querySelectorAll('*');
+        let foundElement = null;
+        
+        for (const el of allElements) {
+            const style = window.getComputedStyle(el);
+            const bgImage = style.backgroundImage;
+            
+            // Check if background contains 4pda URL pattern
+            if (bgImage.includes('4pda.to/s/') && bgImage.includes('.jpg')) {
+                console.log('Found element with 4pda background:', el);
+                console.log('Background image:', bgImage);
+                console.log('Current padding:', style.padding);
+                console.log('Current padding-bottom:', style.paddingBottom);
+                foundElement = el;
+                break;
+            }
+        }
+        
+        // If first method fails, check for elements with specific color
+        if (!foundElement) {
+            console.log('Trying alternative detection method...');
+            for (const el of allElements) {
+                const style = window.getComputedStyle(el);
+                if (style.backgroundColor === 'rgb(230, 231, 233)') {
+                    console.log('Found element with matching background color:', el);
+                    console.log('Current padding:', style.padding);
+                    console.log('Current padding-bottom:', style.paddingBottom);
+                    foundElement = el;
+                    break;
+                }
+            }
+        }
+        
+        // Remove background and padding if element found
+        if (foundElement) {
+            foundElement.style.setProperty('background', 'none', 'important');
+            foundElement.style.setProperty('padding', '0', 'important');
+            foundElement.style.setProperty('padding-bottom', '0', 'important');
+            console.log('Background and padding removed successfully');
+        } else {
+            console.log('No matching element found after all detection methods');
+        }
+    }
 
+    remove4pdaBackground();
     initialize();
 })();
