@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.001
+// @version      1.004
 // @description  For car search: Convert (miles) mileage to km, and (£) price to €, so that the list contains consistent information, and item page
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -46,19 +46,50 @@
         }
     }
 
+    function hideSpotlightListings() {
+        // Find the car list container
+        const carList = $('ul[data-testid="card-list"][class*="Listingsstyled__List-sc"]');
+
+        if (carList.length) {
+            // Find all listing cards within the car list
+            const listings = carList.find('li[data-testid^="listing-card-index-"][class*="Listingsstyled__ListItem-sc"]');
+
+            listings.each(function() {
+                const listing = $(this);
+                // Check if this listing contains a Spotlight element
+                const spotlightElement = listing.find('div[color="GREY_DARKER"][class*="Highlightstyled__"]:contains("Spotlight")');
+
+                if (spotlightElement.length && listing.is(':visible')) {
+                    // Hide the listing instead of removing it
+                    listing.hide();
+                    console.log('Hidden Spotlight listing');
+                }
+            });
+        }
+    }
+
     function processResults() {
-        if (document.location.href.includes('/cars-for-sale/')) { /* Details page */
+        if (document.location.href.includes('/cars-for-sale/')) {
+            /* Details page - keep existing logic */
             $('div[class|="KeyInfoList__Text"]').each(function() {
                 processMileage($(this));
             });
             $('p[class|="Price__CurrentPrice"]:contains("£")').each(function() {
                 processPrice($(this));
             });
-        } else if (document.location.href.includes('/cars')) { /* List page */
-            $('div[class|="Card__Body"] li[class|="Card__KeyInfoItem"]').each(function() {
+        } else if (document.location.href.includes('/cars')) {
+            /* List page - updated for new structure */
+
+            // Hide Spotlight listings gently
+            hideSpotlightListings();
+
+            // Process mileage in the new meta info structure
+            $('ul[class*="SearchCardstyled__MetaInfo"] li[class*="SearchCardstyled__MetaInfoItem"]').each(function() {
                 processMileage($(this));
             });
-            $('p[class|="Card__InfoText"]:contains("£")').each(function() {
+
+            // Process price in the new price structure
+            $('div[class*="Pricestyled__Price"]:contains("£")').each(function() {
                 processPrice($(this));
             });
         }
@@ -71,7 +102,8 @@
         const callback = function(mutationsList, observer) {
             for (const mutation of mutationsList) {
                 if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-                    processResults();
+                    // Use a small delay to ensure DOM is ready
+                    setTimeout(processResults, 100);
                 }
             }
         };
@@ -80,6 +112,7 @@
         observer.observe(targetNode, config);
     }
 
-    processResults();
+    // Initial processing with a small delay to ensure page load
+    setTimeout(processResults, 500);
     observeResults();
 })();
