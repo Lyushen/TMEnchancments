@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.0.9
+// @version      1.0.10
 // @description  Dismisses Tips, enforces black UI text, preserves syntax highlighting in code editors, and auto-switches to 'GPT-5.2 Think deeper' with high performance.
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -98,8 +98,42 @@
   }
 
   /******************************************************************
-   * 2) DOM INTERVENTIONS: Auto-Dismiss Tips
+   * 2) DOM INTERVENTIONS: Simulate Clicks & Helpers
    ******************************************************************/
+  function simulateRealClick(element) {
+    const opts = { bubbles: true, cancelable: true, view: window, buttons: 1 };
+    if (window.PointerEvent) {
+      element.dispatchEvent(new PointerEvent('pointerdown', opts));
+      element.dispatchEvent(new PointerEvent('pointerup', opts));
+    }
+    element.dispatchEvent(new MouseEvent('mousedown', opts));
+    element.dispatchEvent(new MouseEvent('mouseup', opts));
+    element.dispatchEvent(new MouseEvent('click', opts));
+  }
+
+  function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  async function waitForElement(selector, textContent, timeoutMs = 2000) {
+    const startTime = Date.now();
+    while (Date.now() - startTime < timeoutMs) {
+      const elements = document.querySelectorAll(selector);
+      for (const el of elements) {
+        if (!textContent || (el.textContent || '').includes(textContent)) {
+          return el;
+        }
+      }
+      await sleep(50);
+    }
+    return null;
+  }
+
+  /******************************************************************
+   * 3) DOM INTERVENTIONS: Dismiss Tips, Close Panel & Auto GPT
+   ******************************************************************/
+
+  // A) Auto-Dismiss Tips
   const TIP_DIALOG_SELECTOR = 'div[role="dialog"][aria-label="Tips"]';
   const HANDLED_ATTR = 'data-tm-handled';
 
@@ -129,39 +163,26 @@
     }
   }
 
-  /******************************************************************
-   * 3) DOM INTERVENTIONS: GPT Auto-Select (Submenu Handling)
-   ******************************************************************/
-  let isSwitchingGpt = false;
+  // B) Auto-Close Sidebar Panel (Runs Once)
+  let hasAttemptedSidePanelClose = false;
 
-  function simulateRealClick(element) {
-    const opts = { bubbles: true, cancelable: true, view: window, buttons: 1 };
-    if (window.PointerEvent) {
-      element.dispatchEvent(new PointerEvent('pointerdown', opts));
-      element.dispatchEvent(new PointerEvent('pointerup', opts));
-    }
-    element.dispatchEvent(new MouseEvent('mousedown', opts));
-    element.dispatchEvent(new MouseEvent('mouseup', opts));
-    element.dispatchEvent(new MouseEvent('click', opts));
-  }
+  function autoCloseSidePanelOnce() {
+    if (hasAttemptedSidePanelClose) return;
 
-  function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
+    const collapseBtn = document.querySelector('button[data-testid="collapse-button"]');
+    const expandBtn = document.querySelector('button[data-testid="expand-button"]');
 
-  async function waitForElement(selector, textContent, timeoutMs = 2000) {
-    const startTime = Date.now();
-    while (Date.now() - startTime < timeoutMs) {
-      const elements = document.querySelectorAll(selector);
-      for (const el of elements) {
-        if (!textContent || (el.textContent || '').includes(textContent)) {
-          return el;
-        }
+    // If either button exists, the UI has painted enough to make a decision
+    if (collapseBtn || expandBtn) {
+      hasAttemptedSidePanelClose = true; // Lock execution for the rest of the session
+      if (collapseBtn) {
+        simulateRealClick(collapseBtn); // Close it if it's open
       }
-      await sleep(50);
     }
-    return null;
   }
+
+  // C) GPT Auto-Select
+  let isSwitchingGpt = false;
 
   async function enforceGptMode() {
     if (isSwitchingGpt) return;
@@ -211,19 +232,20 @@
   let isThrottled = false;
 
   // PERF OPTIMIZATION: Throttling limits operations to twice per second max.
-  // This prevents UI freezing while the AI is rapidly streaming chunks of text.
   const appObserver = new MutationObserver(() => {
     if (isThrottled) return;
 
     isThrottled = true;
     setTimeout(() => {
       isThrottled = false;
+      autoCloseSidePanelOnce();
       dismissAllTips();
       if (!isSwitchingGpt) enforceGptMode();
     }, 500);
   });
 
   function startDomObservers() {
+    autoCloseSidePanelOnce();
     dismissAllTips();
     enforceGptMode();
     appObserver.observe(document.body, { childList: true, subtree: true });
