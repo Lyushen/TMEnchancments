@@ -4,13 +4,14 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.011
+// @version      1.012
 // @description  For car search: Convert (miles) mileage to km, and (£) price to €, so that the list contains consistent information, and item page
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
 // @updateURL    https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/DoneDeal_Optimisations.js
 // @downloadURL  https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/DoneDeal_Optimisations.js
 // @grant        none
+// @match         https://www.donedeal.ie/all*
 // @match        https://www.donedeal.ie/cars*
 // @match        https://www.donedeal.ie/cars-for-sale/*
 // @require      https://code.jquery.com/jquery-3.6.3.min.js
@@ -252,7 +253,7 @@
             $('p[class*="Price__CurrentPrice"]').each(function() {
                 processPrice($(this));
             });
-        } else if (document.location.href.includes('/cars')) {
+        } else if (document.location.href.includes('/cars') || document.location.href.includes('/all')) {
             // List page
             hideSpotlightListings();
             $('li[data-testid^="listing-card-index-"]').each(function() {
