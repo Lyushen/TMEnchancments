@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.0.11
+// @version      1.0.12
 // @description  Dismisses Tips, enforces black UI text, preserves syntax highlighting in code editors, and auto-switches to 'GPT-5.2 Think deeper' with high performance.
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -22,7 +22,7 @@
   // DEBUG FLAG
   // Set to true to trace why GPT model selection fails on the first try
   // ==================================================================
-  const DEBUG_GPT_SWITCHER = true;
+  const DEBUG_GPT_SWITCHER = false;
 
   function logDebug(...args) {
     if (DEBUG_GPT_SWITCHER) {
