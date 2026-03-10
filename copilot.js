@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.1.0
+// @version      1.1.1
 // @description  Dismisses Tips, enforces black UI text, preserves syntax highlighting in code editors, and auto-switches to the configured latest GPT model.
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -20,7 +20,9 @@
 (() => {
   'use strict';
 
+  // ==================================================================
   // CONFIGURATION & STATE
+  // ==================================================================
   const DEFAULT_PATTERN = "GPT-* Think";
 
   // Load settings from Tampermonkey storage (or use defaults)
@@ -65,7 +67,9 @@
     }
   }
 
-  // 1) FORCE CSS VARIABLES, FOREGROUND COLORS & MENU MASKING
+  /******************************************************************
+   * 1) FORCE CSS VARIABLES, FOREGROUND COLORS & MENU MASKING
+   ******************************************************************/
   const STYLE_ID = 'tm-force-m365-styles';
 
   const css = `
@@ -139,12 +143,16 @@
     styleObserver.observe(document.head, { childList: true });
   }
 
-
-  //* 2) DOM INTERVENTIONS: Helpers
+  /******************************************************************
+   * 2) DOM INTERVENTIONS: Helpers
+   ******************************************************************/
   function simulateRealClick(element) {
     if (!element) return;
-    const opts = { bubbles: true, cancelable: true, view: window, buttons: 1 };
-    if (window.PointerEvent) {
+
+    // REMOVED 'view: window' to avoid TypeError from Tampermonkey proxy windows
+    const opts = { bubbles: true, cancelable: true, buttons: 1 };
+
+    if (typeof PointerEvent !== 'undefined') {
       element.dispatchEvent(new PointerEvent('pointerdown', opts));
       element.dispatchEvent(new PointerEvent('pointerup', opts));
     }
@@ -213,7 +221,10 @@
     return bestEl;
   }
 
-  //* 3) DOM INTERVENTIONS: Dismiss Tips, Close Panel & Auto GPT
+  /******************************************************************
+   * 3) DOM INTERVENTIONS: Dismiss Tips, Close Panel & Auto GPT
+   ******************************************************************/
+
   const TIP_DIALOG_SELECTOR = 'div[role="dialog"][aria-label="Tips"]';
   const HANDLED_ATTR = 'data-tm-handled';
 
