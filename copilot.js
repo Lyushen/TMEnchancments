@@ -4,25 +4,60 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.0.12
-// @description  Dismisses Tips, enforces black UI text, preserves syntax highlighting in code editors, and auto-switches to 'GPT-5.2 Think deeper' with high performance.
+// @version      1.1.0
+// @description  Dismisses Tips, enforces black UI text, preserves syntax highlighting in code editors, and auto-switches to the configured latest GPT model.
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
 // @updateURL    https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/copilot.js
 // @downloadURL  https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/copilot.js
 // @match        https://m365.cloud.microsoft/*
 // @run-at       document-start
-// @grant        none
+// @grant        GM_getValue
+// @grant        GM_setValue
+// @grant        GM_registerMenuCommand
 // ==/UserScript==
 
 (() => {
   'use strict';
 
-  // ==================================================================
-  // DEBUG FLAG
-  // Set to true to trace why GPT model selection fails on the first try
-  // ==================================================================
-  const DEBUG_GPT_SWITCHER = false;
+  // CONFIGURATION & STATE
+  const DEFAULT_PATTERN = "GPT-* Think";
+
+  // Load settings from Tampermonkey storage (or use defaults)
+  let targetModelPattern = typeof GM_getValue === 'function'
+      ? GM_getValue("targetModelPattern", DEFAULT_PATTERN)
+      : DEFAULT_PATTERN;
+
+  let DEBUG_GPT_SWITCHER = typeof GM_getValue === 'function'
+      ? GM_getValue("debugGptSwitcher", false)
+      : false;
+
+  // Register menu items in Tampermonkey
+  if (typeof GM_registerMenuCommand === 'function') {
+    // 1. Menu item for changing the Model Pattern
+    GM_registerMenuCommand("⚙️ Set Target GPT Model...", () => {
+      const newPattern = prompt(
+        "Enter the target GPT model (use * for the latest version).\nExample: GPT-* Think",
+        targetModelPattern
+      );
+      if (newPattern !== null && newPattern.trim() !== "") {
+        targetModelPattern = newPattern.trim();
+        if (typeof GM_setValue === 'function') {
+          GM_setValue("targetModelPattern", targetModelPattern);
+        }
+        alert(`Target model successfully set to: ${targetModelPattern}`);
+      }
+    });
+
+    // 2. Menu item for toggling Debug Mode
+    GM_registerMenuCommand("🐞 Toggle Debug Mode", () => {
+      DEBUG_GPT_SWITCHER = !DEBUG_GPT_SWITCHER;
+      if (typeof GM_setValue === 'function') {
+        GM_setValue("debugGptSwitcher", DEBUG_GPT_SWITCHER);
+      }
+      alert(`GPT Debug Mode is now: ${DEBUG_GPT_SWITCHER ? "ON" : "OFF"}`);
+    });
+  }
 
   function logDebug(...args) {
     if (DEBUG_GPT_SWITCHER) {
@@ -30,9 +65,7 @@
     }
   }
 
-  /******************************************************************
-   * 1) FORCE CSS VARIABLES, FOREGROUND COLORS & MENU MASKING
-   ******************************************************************/
+  // 1) FORCE CSS VARIABLES, FOREGROUND COLORS & MENU MASKING
   const STYLE_ID = 'tm-force-m365-styles';
 
   const css = `
@@ -106,9 +139,8 @@
     styleObserver.observe(document.head, { childList: true });
   }
 
-  /******************************************************************
-   * 2) DOM INTERVENTIONS: Helpers
-   ******************************************************************/
+
+  //* 2) DOM INTERVENTIONS: Helpers
   function simulateRealClick(element) {
     if (!element) return;
     const opts = { bubbles: true, cancelable: true, view: window, buttons: 1 };
@@ -135,10 +167,53 @@
     return null;
   }
 
-  /******************************************************************
-   * 3) DOM INTERVENTIONS: Dismiss Tips, Close Panel & Auto GPT
-   ******************************************************************/
+  function escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
 
+  // Matches items using a wildcard `*` and always returns the one with the highest version number
+  function findBestModelOption(selector, pattern) {
+    const elements = document.querySelectorAll(selector);
+
+    if (!pattern.includes('*')) {
+      // Standard search if there is no wildcard
+      for (const el of elements) {
+        if (el.offsetParent !== null && (el.textContent || '').includes(pattern)) {
+          return el;
+        }
+      }
+      return null;
+    }
+
+    // Build a regex matching the text and capturing the wildcard area
+    const parts = pattern.split('*');
+    const regexStr = parts.map(escapeRegExp).join('(.*?)');
+    const regex = new RegExp(regexStr, 'i');
+
+    let bestEl = null;
+    let maxVersion = -1;
+
+    for (const el of elements) {
+      if (el.offsetParent === null) continue;
+      const text = (el.textContent || '').trim();
+      const match = text.match(regex);
+
+      if (match) {
+        const wildcardContent = match[1] || '0';
+        const numMatch = wildcardContent.match(/[0-9.]+/); // Extract numbers out of wildcard capture (e.g., "5.2" from "5.2 deeper")
+        const versionNum = numMatch ? parseFloat(numMatch[0]) : 0;
+
+        if (versionNum > maxVersion) {
+          maxVersion = versionNum;
+          bestEl = el;
+        }
+      }
+    }
+
+    return bestEl;
+  }
+
+  //* 3) DOM INTERVENTIONS: Dismiss Tips, Close Panel & Auto GPT
   const TIP_DIALOG_SELECTOR = 'div[role="dialog"][aria-label="Tips"]';
   const HANDLED_ATTR = 'data-tm-handled';
 
@@ -237,9 +312,10 @@
           break;
         }
 
-        const targetOption = findElementByTextSync('[role="option"], [role="menuitem"]', 'GPT-5.2 Think');
+        // Check for the desired GPT model dynamically via configured pattern
+        const targetOption = findBestModelOption('[role="option"], [role="menuitem"]', targetModelPattern);
         if (targetOption) {
-          logDebug(`Tick ${attempts}: Found "GPT-5.2 Think". Clicking target!`);
+          logDebug(`Tick ${attempts}: Found target matching pattern "${targetModelPattern}". Clicking target!`);
           simulateRealClick(targetOption);
           await sleep(5);
           continue;
