@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.1.1
+// @version      1.1.3
 // @description  Dismisses Tips, enforces black UI text, preserves syntax highlighting in code editors, and auto-switches to the configured latest GPT model.
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -19,10 +19,6 @@
 
 (() => {
   'use strict';
-
-  // ==================================================================
-  // CONFIGURATION & STATE
-  // ==================================================================
   const DEFAULT_PATTERN = "GPT-* Think";
 
   // Load settings from Tampermonkey storage (or use defaults)
@@ -67,9 +63,6 @@
     }
   }
 
-  /******************************************************************
-   * 1) FORCE CSS VARIABLES, FOREGROUND COLORS & MENU MASKING
-   ******************************************************************/
   const STYLE_ID = 'tm-force-m365-styles';
 
   const css = `
@@ -127,6 +120,31 @@
       transition: none !important;
       animation: none !important;
     }
+
+    /* =======================================================
+       UBLOCK REPLACEMENT: Immediate 0-Occupancy & Blocking
+       ======================================================= */
+    .undefined.reserved-space-container,
+    :not(body, html):has(> * > button[aria-label="See more prompts"]),
+    .fai-SuggestionList,
+    .fai-GroundingMenu,
+    button[data-testid="feedback-button-testid"],
+    div[data-testid="protected-badge-tooltip-trigger"][role="button"],
+    button[data-automation-id="moreButton"],
+    div[data-testid="accessibility-wrapped-card"],
+    div[role="dialog"][aria-modal="true"][class*="TeachingPopoverSurface"],
+    .f12bqx6p.___1gw69ki {
+      opacity: 0 !important;
+      display: none !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+      width: 0 !important;
+      height: 0 !important;
+      min-height: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+    }
   `;
 
   function ensureStyleInjected() {
@@ -134,22 +152,23 @@
     const style = document.createElement('style');
     style.id = STYLE_ID;
     style.textContent = css;
+    // Inject at the highest available node (runs perfectly at document-start)
     (document.head || document.documentElement).appendChild(style);
   }
 
   const styleObserver = new MutationObserver(() => ensureStyleInjected());
+
   function startStyleEnforcement() {
     ensureStyleInjected();
-    styleObserver.observe(document.head, { childList: true });
+    // Use document.documentElement as fallback if document.head isn't parsed yet
+    const target = document.head || document.documentElement;
+    if (target) {
+      styleObserver.observe(target, { childList: true });
+    }
   }
 
-  /******************************************************************
-   * 2) DOM INTERVENTIONS: Helpers
-   ******************************************************************/
   function simulateRealClick(element) {
     if (!element) return;
-
-    // REMOVED 'view: window' to avoid TypeError from Tampermonkey proxy windows
     const opts = { bubbles: true, cancelable: true, buttons: 1 };
 
     if (typeof PointerEvent !== 'undefined') {
@@ -179,12 +198,10 @@
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
-  // Matches items using a wildcard `*` and always returns the one with the highest version number
   function findBestModelOption(selector, pattern) {
     const elements = document.querySelectorAll(selector);
 
     if (!pattern.includes('*')) {
-      // Standard search if there is no wildcard
       for (const el of elements) {
         if (el.offsetParent !== null && (el.textContent || '').includes(pattern)) {
           return el;
@@ -193,7 +210,6 @@
       return null;
     }
 
-    // Build a regex matching the text and capturing the wildcard area
     const parts = pattern.split('*');
     const regexStr = parts.map(escapeRegExp).join('(.*?)');
     const regex = new RegExp(regexStr, 'i');
@@ -208,7 +224,7 @@
 
       if (match) {
         const wildcardContent = match[1] || '0';
-        const numMatch = wildcardContent.match(/[0-9.]+/); // Extract numbers out of wildcard capture (e.g., "5.2" from "5.2 deeper")
+        const numMatch = wildcardContent.match(/[0-9.]+/);
         const versionNum = numMatch ? parseFloat(numMatch[0]) : 0;
 
         if (versionNum > maxVersion) {
@@ -220,10 +236,6 @@
 
     return bestEl;
   }
-
-  /******************************************************************
-   * 3) DOM INTERVENTIONS: Dismiss Tips, Close Panel & Auto GPT
-   ******************************************************************/
 
   const TIP_DIALOG_SELECTOR = 'div[role="dialog"][aria-label="Tips"]';
   const HANDLED_ATTR = 'data-tm-handled';
@@ -266,7 +278,6 @@
   async function enforceGptMode() {
     if (isSwitchingGpt) return;
 
-    // Initial check
     const initialSwitcher = document.getElementById('gptModeSwitcher');
     if (!initialSwitcher || (initialSwitcher.textContent || '').trim() !== 'Auto') {
       return;
@@ -275,10 +286,8 @@
     logDebug('Detected "Auto" state. Initiating State-Machine switch sequence...');
     isSwitchingGpt = true;
 
-    // VISUAL MASK: Hide menus immediately so the user doesn't see the flickering
     document.body.classList.add('tm-mask-gpt-menus');
 
-    // --- CURSOR RESTORATION: Capture phase ---
     const activeEl = document.activeElement;
     const activeElId = activeEl && activeEl.id ? activeEl.id : null;
     let selStart = null;
@@ -308,7 +317,6 @@
         }
       }
     };
-    // ----------------------------------------
 
     try {
       let attempts = 0;
@@ -323,7 +331,6 @@
           break;
         }
 
-        // Check for the desired GPT model dynamically via configured pattern
         const targetOption = findBestModelOption('[role="option"], [role="menuitem"]', targetModelPattern);
         if (targetOption) {
           logDebug(`Tick ${attempts}: Found target matching pattern "${targetModelPattern}". Clicking target!`);
@@ -363,7 +370,7 @@
         logDebug('❌ Reached max attempts. Bailing out. Cleaning up UI...');
         const switcher = document.getElementById('gptModeSwitcher');
         if (switcher && switcher.getAttribute('aria-expanded') === 'true') {
-          simulateRealClick(document.body); // Close menu
+          simulateRealClick(document.body);
         }
       }
 
@@ -373,8 +380,6 @@
       logDebug('Sequence finished. Executing cursor restoration...');
       restoreCursor();
 
-      // Wait a moment for React to unmount the closing menus before unmasking,
-      // preventing a flash of the "fade-out" animation.
       setTimeout(() => {
         document.body.classList.remove('tm-mask-gpt-menus');
         isSwitchingGpt = false;
@@ -382,9 +387,6 @@
     }
   }
 
-  /******************************************************************
-   * 4) OBSERVERS & SPA NAVIGATION (PERFORMANCE OPTIMIZED)
-   ******************************************************************/
   let isThrottled = false;
 
   const appObserver = new MutationObserver(() => {
@@ -427,9 +429,7 @@
     window.addEventListener('popstate', onNav, { passive: true });
   }
 
-  /******************************************************************
-   * INITIALIZE
-   ******************************************************************/
+  // Inject Styles Immediately
   startStyleEnforcement();
 
   if (document.readyState === 'loading') {
