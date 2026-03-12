@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.1.3
+// @version      1.1.4
 // @description  Dismisses Tips, enforces black UI text, preserves syntax highlighting in code editors, and auto-switches to the configured latest GPT model.
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -105,6 +105,20 @@
       --colorNeutralForeground1: revert !important;
       --colorNeutralForeground2: revert !important;
       --colorNeutralForeground3: revert !important;
+    }
+
+    /* =======================================================
+       CHAT INPUT TEXT COLOR OVERRIDES
+       (Targets the typed text only, ignores the placeholder)
+       ======================================================= */
+    #m365-chat-editor-target-element,
+    #m365-chat-editor-target-element * {
+      color: #000000 !important;
+      caret-color: #000000 !important;
+      --colorNeutralForeground1: #000000 !important;
+      --colorNeutralForeground2: #000000 !important;
+      --colorNeutralForeground3: #000000 !important;
+      --colorNeutralForeground4: #000000 !important;
     }
 
     /* =======================================================
@@ -307,7 +321,7 @@
       } else if (activeElId) {
         elToFocus = document.getElementById(activeElId);
       } else {
-        elToFocus = document.querySelector('#userInput, textarea[data-testid], [contenteditable="true"][role="textbox"], textarea');
+        elToFocus = document.querySelector('#userInput, #m365-chat-editor-target-element, textarea[data-testid], [contenteditable="true"][role="textbox"], textarea');
       }
 
       if (elToFocus) {
