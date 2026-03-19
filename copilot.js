@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.1.4
+// @version      1.1.5
 // @description  Dismisses Tips, enforces black UI text, preserves syntax highlighting in code editors, and auto-switches to the configured latest GPT model.
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -27,15 +27,14 @@
       : DEFAULT_PATTERN;
 
   let DEBUG_GPT_SWITCHER = typeof GM_getValue === 'function'
-      ? GM_getValue("debugGptSwitcher", false)
-      : false;
+      ? GM_getValue("debugGptSwitcher", true)
+      : true;
 
   // Register menu items in Tampermonkey
   if (typeof GM_registerMenuCommand === 'function') {
-    // 1. Menu item for changing the Model Pattern
     GM_registerMenuCommand("⚙️ Set Target GPT Model...", () => {
       const newPattern = prompt(
-        "Enter the target GPT model (use * for the latest version).\nExample: GPT-* Think",
+        "Enter the target GPT model (use * for the latest version).\nExample: GPT-* Think deeper",
         targetModelPattern
       );
       if (newPattern !== null && newPattern.trim() !== "") {
@@ -47,7 +46,6 @@
       }
     });
 
-    // 2. Menu item for toggling Debug Mode
     GM_registerMenuCommand("🐞 Toggle Debug Mode", () => {
       DEBUG_GPT_SWITCHER = !DEBUG_GPT_SWITCHER;
       if (typeof GM_setValue === 'function') {
@@ -61,6 +59,12 @@
     if (DEBUG_GPT_SWITCHER) {
       console.log('%c[GPT Debug]', 'color: #0078D4; font-weight: bold;', ...args);
     }
+  }
+
+  function isVisible(el) {
+    if (!el) return false;
+    const rect = el.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
   }
 
   const STYLE_ID = 'tm-force-m365-styles';
@@ -109,7 +113,6 @@
 
     /* =======================================================
        CHAT INPUT TEXT COLOR OVERRIDES
-       (Targets the typed text only, ignores the placeholder)
        ======================================================= */
     #m365-chat-editor-target-element,
     #m365-chat-editor-target-element * {
@@ -140,14 +143,17 @@
        ======================================================= */
     .undefined.reserved-space-container,
     :not(body, html):has(> * > button[aria-label="See more prompts"]),
-    .fai-SuggestionList,
+    .fai-PromptStarterList,
     .fai-GroundingMenu,
     button[data-testid="feedback-button-testid"],
-    div[data-testid="protected-badge-tooltip-trigger"][role="button"],
-    button[data-automation-id="moreButton"],
+    [data-testid="protected-badge-tooltip-trigger"],
+    #moreButton, button[data-automation-id="moreButton"],
     div[data-testid="accessibility-wrapped-card"],
     div[role="dialog"][aria-modal="true"][class*="TeachingPopoverSurface"],
-    .f12bqx6p.___1gw69ki {
+
+    /* Precision block for structural NavDrawer elements */
+    footer.fui-NavDrawerFooter.fai-CopilotNavDrawerFooter > div > div:first-child,
+    footer.fui-NavDrawerFooter.fai-CopilotNavDrawerFooter > div > div:nth-child(3) {
       opacity: 0 !important;
       display: none !important;
       visibility: hidden !important;
@@ -166,7 +172,6 @@
     const style = document.createElement('style');
     style.id = STYLE_ID;
     style.textContent = css;
-    // Inject at the highest available node (runs perfectly at document-start)
     (document.head || document.documentElement).appendChild(style);
   }
 
@@ -174,7 +179,6 @@
 
   function startStyleEnforcement() {
     ensureStyleInjected();
-    // Use document.documentElement as fallback if document.head isn't parsed yet
     const target = document.head || document.documentElement;
     if (target) {
       styleObserver.observe(target, { childList: true });
@@ -198,52 +202,69 @@
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  function findElementByTextSync(selector, textContent) {
-    const elements = document.querySelectorAll(selector);
-    for (const el of elements) {
-      if (el.offsetParent !== null && (el.textContent || '').includes(textContent)) {
-        return el;
-      }
-    }
-    return null;
+  function getMenuText(el) {
+    const h4 = el.querySelector('h4');
+    if (h4) return (h4.textContent || '').trim();
+    return (el.textContent || '').trim();
   }
 
   function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
-  function findBestModelOption(selector, pattern) {
-    const elements = document.querySelectorAll(selector);
+  function findMoreButton() {
+    const candidates = document.querySelectorAll('[role="button"][aria-haspopup="menu"], [role="menuitem"]');
+    for (const el of candidates) {
+      if (!isVisible(el)) continue;
+      if (getMenuText(el) === 'More') return el;
+    }
+    return null;
+  }
 
-    if (!pattern.includes('*')) {
-      for (const el of elements) {
-        if (el.offsetParent !== null && (el.textContent || '').includes(pattern)) {
-          return el;
-        }
+  function findBestModelOption(pattern) {
+    const elements = document.querySelectorAll('[role="menuitem"]');
+
+    if (DEBUG_GPT_SWITCHER) {
+      const visibleOpts = Array.from(elements).filter(isVisible);
+      const textArr = visibleOpts.map(e => `"${getMenuText(e)}"`);
+      if (textArr.length > 0) {
+        logDebug(`🔍 Evaluated visible model options: [ ${textArr.join(', ')} ]`);
       }
-      return null;
     }
 
-    const parts = pattern.split('*');
-    const regexStr = parts.map(escapeRegExp).join('(.*?)');
-    const regex = new RegExp(regexStr, 'i');
+    const isWildcard = pattern.includes('*');
+    let regex = null;
+
+    if (isWildcard) {
+      const parts = pattern.split('*');
+      const regexStr = parts.map(escapeRegExp).join('(.*?)');
+      regex = new RegExp(regexStr, 'i');
+    }
 
     let bestEl = null;
     let maxVersion = -1;
 
     for (const el of elements) {
-      if (el.offsetParent === null) continue;
-      const text = (el.textContent || '').trim();
-      const match = text.match(regex);
+      if (!isVisible(el)) continue;
+      const text = getMenuText(el);
 
-      if (match) {
-        const wildcardContent = match[1] || '0';
-        const numMatch = wildcardContent.match(/[0-9.]+/);
-        const versionNum = numMatch ? parseFloat(numMatch[0]) : 0;
+      if (text === 'Auto' || text === 'More') continue;
 
-        if (versionNum > maxVersion) {
-          maxVersion = versionNum;
-          bestEl = el;
+      if (isWildcard) {
+        const match = text.match(regex);
+        if (match) {
+          const wildcardContent = match[1] || '0';
+          const numMatch = wildcardContent.match(/[0-9.]+/);
+          const versionNum = numMatch ? parseFloat(numMatch[0]) : 0;
+
+          if (versionNum > maxVersion) {
+            maxVersion = versionNum;
+            bestEl = el;
+          }
+        }
+      } else {
+        if (text.toLowerCase().includes(pattern.toLowerCase())) {
+          return el;
         }
       }
     }
@@ -276,14 +297,46 @@
     }
   }
 
-  let hasAttemptedSidePanelClose = false;
-  function autoCloseSidePanelOnce() {
-    if (hasAttemptedSidePanelClose) return;
-    const collapseBtn = document.querySelector('button[data-testid="collapse-button"]');
-    const expandBtn = document.querySelector('button[data-testid="expand-button"]');
-    if (collapseBtn || expandBtn) {
-      hasAttemptedSidePanelClose = true;
-      if (collapseBtn) simulateRealClick(collapseBtn);
+  let sidePanelSuccessfullyClosed = false;
+  let sidePanelAttempts = 0;
+
+  function ensureSidePanelClosed() {
+    if (sidePanelSuccessfullyClosed) return;
+
+    // 1. Robust anchoring: strictly scope our search to the specific Copilot Nav Header
+    const headerAnchor = document.querySelector('header.fui-NavDrawerHeader.fai-CopilotNavDrawerHeader');
+
+    if (!headerAnchor) {
+      if (sidePanelAttempts === 0) logDebug('🔎 [SidePanel] Nav Drawer Header not found yet in DOM. Waiting...');
+      return;
+    }
+
+    // 2. Only look for collapse/expand buttons INSIDE this specific header
+    const expandBtn = headerAnchor.querySelector('button[data-testid="expand-button"]');
+    const collapseBtn = headerAnchor.querySelector('button[data-testid="collapse-button"]');
+
+    if (expandBtn && isVisible(expandBtn)) {
+      logDebug('✅ [SidePanel] "Expand" button found within the Nav Header. Panel is successfully closed.');
+      sidePanelSuccessfullyClosed = true;
+      return;
+    }
+
+    if (collapseBtn && isVisible(collapseBtn)) {
+      const isExpanded = collapseBtn.getAttribute('aria-expanded');
+
+      // Some React UI libraries just toggle aria-expanded to false instead of swapping the button ID
+      if (isExpanded === 'false') {
+        logDebug('✅ [SidePanel] "Collapse" button in Nav Header has aria-expanded="false". Marking as closed.');
+        sidePanelSuccessfullyClosed = true;
+        return;
+      }
+
+      // If it is true (or missing), we need to click it
+      sidePanelAttempts++;
+      logDebug(`⏳ [SidePanel] Attempt ${sidePanelAttempts}: "Collapse" button found and active. Clicking...`);
+
+      simulateRealClick(collapseBtn);
+      try { collapseBtn.click(); } catch (e) {}
     }
   }
 
@@ -293,7 +346,7 @@
     if (isSwitchingGpt) return;
 
     const initialSwitcher = document.getElementById('gptModeSwitcher');
-    if (!initialSwitcher || (initialSwitcher.textContent || '').trim() !== 'Auto') {
+    if (!initialSwitcher || !(initialSwitcher.textContent || '').trim().includes('Auto')) {
       return;
     }
 
@@ -334,36 +387,37 @@
 
     try {
       let attempts = 0;
-      const maxAttempts = 20;
+      const maxAttempts = 30;
+      const loopSleepMs = 150;
 
       while (attempts < maxAttempts) {
         attempts++;
 
         const switcher = document.getElementById('gptModeSwitcher');
-        if (!switcher || (switcher.textContent || '').trim() !== 'Auto') {
-          logDebug('✅ Switcher is no longer "Auto". Success!');
+        if (!switcher || !(switcher.textContent || '').trim().includes('Auto')) {
+          logDebug('✅ Switcher text updated away from "Auto". Success!');
           break;
         }
 
-        const targetOption = findBestModelOption('[role="option"], [role="menuitem"]', targetModelPattern);
+        const targetOption = findBestModelOption(targetModelPattern);
         if (targetOption) {
-          logDebug(`Tick ${attempts}: Found target matching pattern "${targetModelPattern}". Clicking target!`);
+          logDebug(`Tick ${attempts}: Found target matching "${targetModelPattern}". Clicking!`);
           simulateRealClick(targetOption);
-          await sleep(5);
+          await sleep(loopSleepMs);
           continue;
         }
 
-        const moreBtn = findElementByTextSync('[data-test-id="gptSubMenuModelTrigger"], [role="menuitem"]', 'More');
+        const moreBtn = findMoreButton();
         if (moreBtn) {
-          const isMoreExpanded = moreBtn.getAttribute('aria-expanded') === 'true';
-          if (!isMoreExpanded) {
-            logDebug(`Tick ${attempts}: Found "More" button (Closed). Clicking it.`);
+          const isExpanded = moreBtn.getAttribute('aria-expanded') === 'true';
+          if (!isExpanded) {
+            logDebug(`Tick ${attempts}: Found "More" button. Clicking to expand submenu.`);
             simulateRealClick(moreBtn);
-            await sleep(5);
+            await sleep(loopSleepMs);
             continue;
           } else {
-            logDebug(`Tick ${attempts}: "More" is expanded, waiting for target to render...`);
-            await sleep(5);
+            logDebug(`Tick ${attempts}: "More" is expanded, waiting for submenu options to render...`);
+            await sleep(loopSleepMs);
             continue;
           }
         }
@@ -372,12 +426,12 @@
         if (!isSwitcherExpanded) {
            logDebug(`Tick ${attempts}: Main menu is closed. Clicking switcher to open.`);
            simulateRealClick(switcher);
-           await sleep(5);
+           await sleep(loopSleepMs);
            continue;
         }
 
-        logDebug(`Tick ${attempts}: Menu is open, waiting for options to render...`);
-        await sleep(5);
+        logDebug(`Tick ${attempts}: Menu is open but options not found yet, waiting...`);
+        await sleep(loopSleepMs);
       }
 
       if (attempts >= maxAttempts) {
@@ -408,14 +462,14 @@
     isThrottled = true;
     setTimeout(() => {
       isThrottled = false;
-      autoCloseSidePanelOnce();
+      ensureSidePanelClosed();
       dismissAllTips();
       if (!isSwitchingGpt) enforceGptMode();
     }, 500);
   });
 
   function startDomObservers() {
-    autoCloseSidePanelOnce();
+    ensureSidePanelClosed();
     dismissAllTips();
     enforceGptMode();
     appObserver.observe(document.body, { childList: true, subtree: true });
@@ -443,7 +497,6 @@
     window.addEventListener('popstate', onNav, { passive: true });
   }
 
-  // Inject Styles Immediately
   startStyleEnforcement();
 
   if (document.readyState === 'loading') {
