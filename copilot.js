@@ -297,48 +297,95 @@
     }
   }
 
-  let sidePanelSuccessfullyClosed = false;
-  let sidePanelAttempts = 0;
+  // =========================================================================
+  //   INSTANT EVENT-DRIVEN SIDE PANEL MANAGER
+  // =========================================================================
 
-  function ensureSidePanelClosed() {
-    if (sidePanelSuccessfullyClosed) return;
+  let sidePanelActive = false;
+  let sidePanelSessionEnded = false;
+  let sidePanelCloseCount = 0;
+  const MAX_SIDE_PANEL_CLOSES = 2; // Allow closing initial load + React re-hydrate
+  let sidePanelFailSafeTimer = null;
 
-    // 1. Robust anchoring: strictly scope our search to the specific Copilot Nav Header
+  function resetSidePanelSession() {
+    sidePanelActive = false;
+    sidePanelSessionEnded = false;
+    sidePanelCloseCount = 0;
+    if (sidePanelFailSafeTimer) clearTimeout(sidePanelFailSafeTimer);
+
+    // Fail-safe: if the GPT Switcher isn't found or takes way too long, activate side panel check anyway
+    sidePanelFailSafeTimer = setTimeout(() => {
+      if (!sidePanelActive && !sidePanelSessionEnded) {
+        logDebug('⏳ [SidePanel] GPT Model fallback timer triggered. Activating panel check.');
+        triggerSidePanelSequence();
+      }
+    }, 4000);
+  }
+
+  function triggerSidePanelSequence() {
+    if (sidePanelActive || sidePanelSessionEnded) return;
+    sidePanelActive = true;
+
+    logDebug('🚀 [SidePanel] Model selection complete. Activating instant event-driven close sequence...');
+
+    // Check immediately in case it's already rendered
+    checkAndCloseSidePanel();
+
+    // End session entirely after 8 seconds, returning 100% control to the user.
+    if (sidePanelFailSafeTimer) clearTimeout(sidePanelFailSafeTimer);
+    sidePanelFailSafeTimer = setTimeout(() => {
+      logDebug('🏁 [SidePanel] 8-second window expired. Returning manual control to user.');
+      sidePanelSessionEnded = true;
+    }, 8000);
+  }
+
+  function checkAndCloseSidePanel() {
+    // Stop checking if session is over (user has control) or not started yet
+    if (!sidePanelActive || sidePanelSessionEnded) return;
+
     const headerAnchor = document.querySelector('header.fui-NavDrawerHeader.fai-CopilotNavDrawerHeader');
+    if (!headerAnchor) return;
 
-    if (!headerAnchor) {
-      if (sidePanelAttempts === 0) logDebug('🔎 [SidePanel] Nav Drawer Header not found yet in DOM. Waiting...');
-      return;
-    }
-
-    // 2. Only look for collapse/expand buttons INSIDE this specific header
-    const expandBtn = headerAnchor.querySelector('button[data-testid="expand-button"]');
     const collapseBtn = headerAnchor.querySelector('button[data-testid="collapse-button"]');
 
-    if (expandBtn && isVisible(expandBtn)) {
-      logDebug('✅ [SidePanel] "Expand" button found within the Nav Header. Panel is successfully closed.');
-      sidePanelSuccessfullyClosed = true;
-      return;
-    }
-
-    if (collapseBtn && isVisible(collapseBtn)) {
-      const isExpanded = collapseBtn.getAttribute('aria-expanded');
-
-      // Some React UI libraries just toggle aria-expanded to false instead of swapping the button ID
-      if (isExpanded === 'false') {
-        logDebug('✅ [SidePanel] "Collapse" button in Nav Header has aria-expanded="false". Marking as closed.');
-        sidePanelSuccessfullyClosed = true;
-        return;
-      }
-
-      // If it is true (or missing), we need to click it
-      sidePanelAttempts++;
-      logDebug(`⏳ [SidePanel] Attempt ${sidePanelAttempts}: "Collapse" button found and active. Clicking...`);
+    if (collapseBtn && isVisible(collapseBtn) && collapseBtn.getAttribute('aria-expanded') !== 'false') {
+      logDebug(`⚡ [SidePanel Event] Open panel detected! Closing instantly... (Action ${sidePanelCloseCount + 1}/${MAX_SIDE_PANEL_CLOSES})`);
 
       simulateRealClick(collapseBtn);
       try { collapseBtn.click(); } catch (e) {}
+
+      sidePanelCloseCount++;
+
+      // Once we hit the max closures to defeat the React double-render, disable further checks.
+      if (sidePanelCloseCount >= MAX_SIDE_PANEL_CLOSES) {
+        logDebug('✅ [SidePanel] Max automatic closes reached. Ending automation session.');
+        sidePanelSessionEnded = true;
+      }
     }
   }
+
+  // A dedicated, unthrottled MutationObserver specifically to catch React's split-second DOM updates.
+  const sidePanelObserver = new MutationObserver((mutations) => {
+    if (!sidePanelActive || sidePanelSessionEnded) return;
+
+    // Small optimization: quickly scan if any relevant attribute or node changed before running full check
+    for (const mutation of mutations) {
+      if (mutation.type === 'childList' || (mutation.type === 'attributes' && mutation.attributeName === 'aria-expanded')) {
+        checkAndCloseSidePanel();
+        break;
+      }
+    }
+  });
+
+  // Start observing instantly on attributes/childList so we don't miss a single frame.
+  sidePanelObserver.observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['aria-expanded', 'class']
+  });
+
+  // =========================================================================
 
   let isSwitchingGpt = false;
 
@@ -346,7 +393,11 @@
     if (isSwitchingGpt) return;
 
     const initialSwitcher = document.getElementById('gptModeSwitcher');
-    if (!initialSwitcher || !(initialSwitcher.textContent || '').trim().includes('Auto')) {
+    if (!initialSwitcher) return;
+
+    if (!(initialSwitcher.textContent || '').trim().includes('Auto')) {
+      // Model is correct; unlock event-driven Side Panel sequence!
+      triggerSidePanelSequence();
       return;
     }
 
@@ -451,25 +502,27 @@
       setTimeout(() => {
         document.body.classList.remove('tm-mask-gpt-menus');
         isSwitchingGpt = false;
+
+        // Unlock event-driven Side Panel sequence now that we are done switching!
+        triggerSidePanelSequence();
       }, 500);
     }
   }
 
+  // Throttled main app observer (for Tips & triggering Model switcher)
   let isThrottled = false;
-
   const appObserver = new MutationObserver(() => {
     if (isThrottled) return;
     isThrottled = true;
     setTimeout(() => {
       isThrottled = false;
-      ensureSidePanelClosed();
       dismissAllTips();
       if (!isSwitchingGpt) enforceGptMode();
     }, 500);
   });
 
   function startDomObservers() {
-    ensureSidePanelClosed();
+    resetSidePanelSession();
     dismissAllTips();
     enforceGptMode();
     appObserver.observe(document.body, { childList: true, subtree: true });
@@ -479,6 +532,7 @@
     const push = history.pushState;
     const replace = history.replaceState;
     const onNav = () => setTimeout(() => {
+      resetSidePanelSession();
       ensureStyleInjected();
       dismissAllTips();
       enforceGptMode();
