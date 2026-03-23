@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.1.6
+// @version      1.1.7
 // @description  Dismisses Tips, enforces black UI text, preserves syntax highlighting in code editors, and auto-switches to the configured latest GPT model.
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -26,13 +26,24 @@
       ? GM_getValue("targetModelPattern", DEFAULT_PATTERN)
       : DEFAULT_PATTERN;
 
+  // Auto-migrate legacy exact matches (e.g., GPT-4, GPT-4*) to the new dynamic wildcard
+  if (/^GPT[\s\-]*4/i.test(targetModelPattern)) {
+      targetModelPattern = DEFAULT_PATTERN;
+      if (typeof GM_setValue === 'function') {
+          GM_setValue("targetModelPattern", targetModelPattern);
+      }
+  }
+
   let DEBUG_GPT_SWITCHER = typeof GM_getValue === 'function'
       ? GM_getValue("debugGptSwitcher", true)
       : true;
 
+  // Track if we have already succeeded or definitively failed so we don't lock up UI
+  let hasExecutedGptSwitch = false;
+
   // Register menu items in Tampermonkey
   if (typeof GM_registerMenuCommand === 'function') {
-    GM_registerMenuCommand("⚙️ Set Target GPT Model...", () => {
+    GM_registerMenuCommand(`⚙️Set Target Pattern [${targetModelPattern}]`, () => {
       const newPattern = prompt(
         "Enter the target GPT model (use * for the latest version).\nExample: GPT-* Think deeper",
         targetModelPattern
@@ -46,7 +57,7 @@
       }
     });
 
-    GM_registerMenuCommand("🐞 Toggle Debug Mode", () => {
+    GM_registerMenuCommand(`🐞Toggle Debug Mode [${DEBUG_GPT_SWITCHER ? "ON" : "OFF"}]`, () => {
       DEBUG_GPT_SWITCHER = !DEBUG_GPT_SWITCHER;
       if (typeof GM_setValue === 'function') {
         GM_setValue("debugGptSwitcher", DEBUG_GPT_SWITCHER);
@@ -203,6 +214,10 @@
   }
 
   function getMenuText(el) {
+    // Avoid accidentally grabbing sub-labels by targeting specific wrappers React uses
+    const primary = el.querySelector('[class*="primaryContentWrapper"]');
+    if (primary) return (primary.textContent || '').trim();
+
     const h4 = el.querySelector('h4');
     if (h4) return (h4.textContent || '').trim();
     return (el.textContent || '').trim();
@@ -212,64 +227,123 @@
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
-  function findMoreButton() {
-    const candidates = document.querySelectorAll('[role="button"][aria-haspopup="menu"], [role="menuitem"]');
+  function findSubmenuTriggers() {
+    // Dynamically look for any "Option" folder inside a menu drop down that dictates a popup sub-menu
+    const candidates = document.querySelectorAll('[role="menuitem"][aria-haspopup], [role="option"][aria-haspopup], [role="menuitemradio"][aria-haspopup]');
+    const triggers = [];
     for (const el of candidates) {
-      if (!isVisible(el)) continue;
-      if (getMenuText(el) === 'More') return el;
+      if (el.id === 'gptModeSwitcher') continue;
+      // Ensure we are strictly interacting inside popover boundaries
+      if (el.closest('.fui-MenuPopover') || el.closest('[role="menu"]')) {
+        if (isVisible(el)) triggers.push(el);
+      }
     }
-    return null;
+    return triggers;
   }
 
   function findBestModelOption(pattern) {
-    const elements = document.querySelectorAll('[role="menuitem"]');
+    const candidates = document.querySelectorAll('[role="menuitem"], [role="option"], [role="menuitemradio"]');
+    const elements = [];
 
-    if (DEBUG_GPT_SWITCHER) {
-      const visibleOpts = Array.from(elements).filter(isVisible);
-      const textArr = visibleOpts.map(e => `"${getMenuText(e)}"`);
-      if (textArr.length > 0) {
-        logDebug(`🔍 Evaluated visible model options: [ ${textArr.join(', ')} ]`);
+    // Whitelist only child elements existing physically inside an active UI menu drop down
+    for (const el of candidates) {
+      if (el.id === 'gptModeSwitcher') continue;
+      if (el.closest('.fui-MenuPopover') || el.closest('[role="menu"]')) {
+         elements.push(el);
       }
     }
+
+    let bestEl = null;
+    let maxVersion = -1;
+
+    let fallbackEl = null;
+    let fallbackMaxScore = -1;
 
     const isWildcard = pattern.includes('*');
     let regex = null;
 
     if (isWildcard) {
       const parts = pattern.split('*');
-      const regexStr = parts.map(escapeRegExp).join('(.*?)');
+      let regexStr = parts.map(escapeRegExp).join('(.*?)');
+      regexStr = regexStr.replace(/\\-/g, '[\\s\\-]*');
+      regexStr = regexStr.replace(/ /g, '\\s+');
       regex = new RegExp(regexStr, 'i');
+    } else {
+      let flexStr = escapeRegExp(pattern).replace(/\\-/g, '[\\s\\-]*').replace(/ /g, '\\s+');
+      regex = new RegExp(flexStr, 'i');
     }
 
-    let bestEl = null;
-    let maxVersion = -1;
+    if (DEBUG_GPT_SWITCHER) {
+      const visibleOpts = elements.filter(isVisible);
+      const textArr = visibleOpts.map(e => {
+         let popup = e.getAttribute('aria-haspopup');
+         let isTrigger = popup === 'menu' || popup === 'true';
+         return `"${getMenuText(e)}"${isTrigger ? ' (trigger folder)' : ''}`;
+      });
+      if (textArr.length > 0) {
+        logDebug(`🔍 Evaluated visible options: [ ${textArr.join(', ')} ]`);
+        logDebug(`🎯 Looking for pattern: "${pattern}" (Regex: ${regex})`);
+      }
+    }
 
     for (const el of elements) {
       if (!isVisible(el)) continue;
-      const text = getMenuText(el);
 
+      // Skip over submenu "Folders" (e.g. "GPT Open AI")
+      const popup = el.getAttribute('aria-haspopup');
+      if (popup === 'menu' || popup === 'true') continue;
+
+      let text = getMenuText(el);
+      text = text.replace(/\s+/g, ' ').trim(); // normalize non-breaking spaces
       if (text === 'Auto' || text === 'More') continue;
 
-      if (isWildcard) {
-        const match = text.match(regex);
-        if (match) {
+      // Track smartest fallback based on GPT version & reasoning capability
+      if (text.toLowerCase().includes('gpt')) {
+         const numMatch = text.match(/[0-9.]+/);
+         const versionNum = numMatch ? parseFloat(numMatch[0]) : 0;
+         // Add a tiny decimal weight so "Think/Reasoning" breaks ties on same version
+         const isThink = text.toLowerCase().includes('think') || text.toLowerCase().includes('reason');
+         const score = versionNum + (isThink ? 0.01 : 0);
+
+         if (score > fallbackMaxScore) {
+             fallbackMaxScore = score;
+             fallbackEl = el;
+         }
+      }
+
+      // Check standard targeted match
+      const match = text.match(regex);
+      if (match) {
+        if (isWildcard) {
           const wildcardContent = match[1] || '0';
           const numMatch = wildcardContent.match(/[0-9.]+/);
           const versionNum = numMatch ? parseFloat(numMatch[0]) : 0;
 
-          if (versionNum > maxVersion) {
-            maxVersion = versionNum;
+          const isThink = text.toLowerCase().includes('think') || text.toLowerCase().includes('reason');
+          const score = versionNum + (isThink ? 0.01 : 0);
+
+          if (score > maxVersion) {
+            maxVersion = score;
             bestEl = el;
           }
-        }
-      } else {
-        if (text.toLowerCase().includes(pattern.toLowerCase())) {
+        } else {
+          // First exact match wins if no wildcard
           return el;
         }
       }
     }
 
-    return bestEl;
+    if (bestEl) {
+       if (DEBUG_GPT_SWITCHER) logDebug(`✅ Perfect match found: "${getMenuText(bestEl)}"`);
+       return bestEl;
+    }
+
+    if (fallbackEl) {
+       if (DEBUG_GPT_SWITCHER) logDebug(`⚠️ Exact pattern not found. Smart Fallback selected: "${getMenuText(fallbackEl)}"`);
+       return fallbackEl;
+    }
+
+    return null;
   }
 
   const TIP_DIALOG_SELECTOR = 'div[role="dialog"][aria-label="Tips"]';
@@ -390,7 +464,7 @@
   let isSwitchingGpt = false;
 
   async function enforceGptMode() {
-    if (isSwitchingGpt) return;
+    if (isSwitchingGpt || hasExecutedGptSwitch) return;
 
     const initialSwitcher = document.getElementById('gptModeSwitcher');
     if (!initialSwitcher) return;
@@ -403,7 +477,6 @@
 
     logDebug('Detected "Auto" state. Initiating State-Machine switch sequence...');
     isSwitchingGpt = true;
-
     document.body.classList.add('tm-mask-gpt-menus');
 
     const activeEl = document.activeElement;
@@ -436,60 +509,86 @@
       }
     };
 
+    let wasSuccessful = false;
+
     try {
       let attempts = 0;
       const maxAttempts = 30;
       const loopSleepMs = 150;
+      let stableTicks = 0;
 
       while (attempts < maxAttempts) {
         attempts++;
 
         const switcher = document.getElementById('gptModeSwitcher');
-        if (!switcher || !(switcher.textContent || '').trim().includes('Auto')) {
+        if (!switcher) break;
+
+        if (!(switcher.textContent || '').trim().includes('Auto')) {
           logDebug('✅ Switcher text updated away from "Auto". Success!');
+          hasExecutedGptSwitch = true;
           break;
         }
 
-        const targetOption = findBestModelOption(targetModelPattern);
-        if (targetOption) {
-          logDebug(`Tick ${attempts}: Found target matching "${targetModelPattern}". Clicking!`);
-          simulateRealClick(targetOption);
-          await sleep(loopSleepMs);
-          continue;
-        }
-
-        const moreBtn = findMoreButton();
-        if (moreBtn) {
-          const isExpanded = moreBtn.getAttribute('aria-expanded') === 'true';
-          if (!isExpanded) {
-            logDebug(`Tick ${attempts}: Found "More" button. Clicking to expand submenu.`);
-            simulateRealClick(moreBtn);
-            await sleep(loopSleepMs);
-            continue;
-          } else {
-            logDebug(`Tick ${attempts}: "More" is expanded, waiting for submenu options to render...`);
-            await sleep(loopSleepMs);
-            continue;
-          }
-        }
-
+        // 1. Is the main switcher open?
         const isSwitcherExpanded = switcher.getAttribute('aria-expanded') === 'true';
         if (!isSwitcherExpanded) {
            logDebug(`Tick ${attempts}: Main menu is closed. Clicking switcher to open.`);
            simulateRealClick(switcher);
+           stableTicks = 0;
            await sleep(loopSleepMs);
            continue;
         }
 
-        logDebug(`Tick ${attempts}: Menu is open but options not found yet, waiting...`);
+        // 2. Can we find the target option?
+        const targetOption = findBestModelOption(targetModelPattern);
+        if (targetOption) {
+          logDebug(`Tick ${attempts}: Found target! Initiating click on "${getMenuText(targetOption)}".`);
+          simulateRealClick(targetOption);
+          hasExecutedGptSwitch = true;
+          wasSuccessful = true;
+          break; // Break loop immediately. State machine achieved its target.
+        }
+
+        // 3. Are there collapsed folders/submenus? Find and Expand them
+        const triggers = findSubmenuTriggers();
+        let unexpandedTrigger = null;
+        for (const t of triggers) {
+          if (t.getAttribute('aria-expanded') !== 'true') {
+            unexpandedTrigger = t;
+            break;
+          }
+        }
+
+        if (unexpandedTrigger) {
+          logDebug(`Tick ${attempts}: Found collapsed submenu trigger. Clicking to expand.`);
+          simulateRealClick(unexpandedTrigger);
+          stableTicks = 0;
+          await sleep(loopSleepMs);
+          continue;
+        }
+
+        // 4. Wait natively if DOM is fully expanded but catching up on render
+        logDebug(`Tick ${attempts}: Menu & submenus are open but options not found yet, waiting... (Stable ticks: ${stableTicks})`);
+        stableTicks++;
+        if (stableTicks > 10) {
+           logDebug('❌ Target model not found after completely exhausting submenus. Gracefully aborting to prevent UI lock.');
+           hasExecutedGptSwitch = true;
+           break;
+        }
+
         await sleep(loopSleepMs);
       }
 
       if (attempts >= maxAttempts) {
-        logDebug('❌ Reached max attempts. Bailing out. Cleaning up UI...');
-        const switcher = document.getElementById('gptModeSwitcher');
-        if (switcher && switcher.getAttribute('aria-expanded') === 'true') {
-          simulateRealClick(document.body);
+        logDebug('❌ Reached max DOM query attempts. Bailing out.');
+        hasExecutedGptSwitch = true;
+      }
+
+      // Cleanup: Close the drop down menu behind us ONLY if we failed to click an item
+      if (!wasSuccessful) {
+        const finalSwitcher = document.getElementById('gptModeSwitcher');
+        if (finalSwitcher && finalSwitcher.getAttribute('aria-expanded') === 'true') {
+          simulateRealClick(finalSwitcher);
         }
       }
 
@@ -517,12 +616,14 @@
     setTimeout(() => {
       isThrottled = false;
       dismissAllTips();
-      if (!isSwitchingGpt) enforceGptMode();
+      // Ensure we don't start the switcher if it's already actively processing or deliberately ended
+      if (!isSwitchingGpt && !hasExecutedGptSwitch) enforceGptMode();
     }, 500);
   });
 
   function startDomObservers() {
     resetSidePanelSession();
+    hasExecutedGptSwitch = false;
     dismissAllTips();
     enforceGptMode();
     appObserver.observe(document.body, { childList: true, subtree: true });
@@ -533,6 +634,7 @@
     const replace = history.replaceState;
     const onNav = () => setTimeout(() => {
       resetSidePanelSession();
+      hasExecutedGptSwitch = false;
       ensureStyleInjected();
       dismissAllTips();
       enforceGptMode();
