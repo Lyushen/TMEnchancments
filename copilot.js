@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.1.9
+// @version      1.1.10
 // @description  Dismisses Tips, enforces black UI text, preserves syntax highlighting in code editors, and auto-switches to the configured latest GPT model.
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -64,6 +64,7 @@
         if (typeof GM_setValue === 'function') {
           GM_setValue("targetModelPattern", targetModelPattern);
         }
+        alert(`Target model successfully set to: ${targetModelPattern}`);
       }
     });
 
@@ -72,6 +73,7 @@
       if (typeof GM_setValue === 'function') {
         GM_setValue("debugGptSwitcher", DEBUG_GPT_SWITCHER);
       }
+      alert(`GPT Debug Mode is now: ${DEBUG_GPT_SWITCHER ? "ON" : "OFF"}`);
     });
   }
 
