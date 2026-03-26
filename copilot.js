@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.1.7
+// @version      1.1.8
 // @description  Dismisses Tips, enforces black UI text, preserves syntax highlighting in code editors, and auto-switches to the configured latest GPT model.
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -38,8 +38,19 @@
       ? GM_getValue("debugGptSwitcher", true)
       : true;
 
-  // Track if we have already succeeded or definitively failed so we don't lock up UI
+  // Track state to prevent lockups but allow for fixing React reversions
+  let isSwitchingGpt = false;
   let hasExecutedGptSwitch = false;
+  let lastGptSwitchSuccess = false;
+  let gptReversionCount = 0;
+  const MAX_GPT_REVERSIONS = 3; // Allow up to 3 "re-switches" if React forces it back to Auto
+
+  function resetGptSession() {
+    hasExecutedGptSwitch = false;
+    lastGptSwitchSuccess = false;
+    gptReversionCount = 0;
+    isSwitchingGpt = false;
+  }
 
   // Register menu items in Tampermonkey
   if (typeof GM_registerMenuCommand === 'function') {
@@ -214,7 +225,6 @@
   }
 
   function getMenuText(el) {
-    // Avoid accidentally grabbing sub-labels by targeting specific wrappers React uses
     const primary = el.querySelector('[class*="primaryContentWrapper"]');
     if (primary) return (primary.textContent || '').trim();
 
@@ -228,12 +238,10 @@
   }
 
   function findSubmenuTriggers() {
-    // Dynamically look for any "Option" folder inside a menu drop down that dictates a popup sub-menu
     const candidates = document.querySelectorAll('[role="menuitem"][aria-haspopup], [role="option"][aria-haspopup], [role="menuitemradio"][aria-haspopup]');
     const triggers = [];
     for (const el of candidates) {
       if (el.id === 'gptModeSwitcher') continue;
-      // Ensure we are strictly interacting inside popover boundaries
       if (el.closest('.fui-MenuPopover') || el.closest('[role="menu"]')) {
         if (isVisible(el)) triggers.push(el);
       }
@@ -245,7 +253,6 @@
     const candidates = document.querySelectorAll('[role="menuitem"], [role="option"], [role="menuitemradio"]');
     const elements = [];
 
-    // Whitelist only child elements existing physically inside an active UI menu drop down
     for (const el of candidates) {
       if (el.id === 'gptModeSwitcher') continue;
       if (el.closest('.fui-MenuPopover') || el.closest('[role="menu"]')) {
@@ -289,19 +296,16 @@
     for (const el of elements) {
       if (!isVisible(el)) continue;
 
-      // Skip over submenu "Folders" (e.g. "GPT Open AI")
       const popup = el.getAttribute('aria-haspopup');
       if (popup === 'menu' || popup === 'true') continue;
 
       let text = getMenuText(el);
-      text = text.replace(/\s+/g, ' ').trim(); // normalize non-breaking spaces
+      text = text.replace(/\s+/g, ' ').trim();
       if (text === 'Auto' || text === 'More') continue;
 
-      // Track smartest fallback based on GPT version & reasoning capability
       if (text.toLowerCase().includes('gpt')) {
          const numMatch = text.match(/[0-9.]+/);
          const versionNum = numMatch ? parseFloat(numMatch[0]) : 0;
-         // Add a tiny decimal weight so "Think/Reasoning" breaks ties on same version
          const isThink = text.toLowerCase().includes('think') || text.toLowerCase().includes('reason');
          const score = versionNum + (isThink ? 0.01 : 0);
 
@@ -311,7 +315,6 @@
          }
       }
 
-      // Check standard targeted match
       const match = text.match(regex);
       if (match) {
         if (isWildcard) {
@@ -327,7 +330,6 @@
             bestEl = el;
           }
         } else {
-          // First exact match wins if no wildcard
           return el;
         }
       }
@@ -378,7 +380,7 @@
   let sidePanelActive = false;
   let sidePanelSessionEnded = false;
   let sidePanelCloseCount = 0;
-  const MAX_SIDE_PANEL_CLOSES = 2; // Allow closing initial load + React re-hydrate
+  const MAX_SIDE_PANEL_CLOSES = 2;
   let sidePanelFailSafeTimer = null;
 
   function resetSidePanelSession() {
@@ -387,7 +389,6 @@
     sidePanelCloseCount = 0;
     if (sidePanelFailSafeTimer) clearTimeout(sidePanelFailSafeTimer);
 
-    // Fail-safe: if the GPT Switcher isn't found or takes way too long, activate side panel check anyway
     sidePanelFailSafeTimer = setTimeout(() => {
       if (!sidePanelActive && !sidePanelSessionEnded) {
         logDebug('⏳ [SidePanel] GPT Model fallback timer triggered. Activating panel check.');
@@ -401,11 +402,8 @@
     sidePanelActive = true;
 
     logDebug('🚀 [SidePanel] Model selection complete. Activating instant event-driven close sequence...');
-
-    // Check immediately in case it's already rendered
     checkAndCloseSidePanel();
 
-    // End session entirely after 8 seconds, returning 100% control to the user.
     if (sidePanelFailSafeTimer) clearTimeout(sidePanelFailSafeTimer);
     sidePanelFailSafeTimer = setTimeout(() => {
       logDebug('🏁 [SidePanel] 8-second window expired. Returning manual control to user.');
@@ -414,7 +412,6 @@
   }
 
   function checkAndCloseSidePanel() {
-    // Stop checking if session is over (user has control) or not started yet
     if (!sidePanelActive || sidePanelSessionEnded) return;
 
     const headerAnchor = document.querySelector('header.fui-NavDrawerHeader.fai-CopilotNavDrawerHeader');
@@ -430,7 +427,6 @@
 
       sidePanelCloseCount++;
 
-      // Once we hit the max closures to defeat the React double-render, disable further checks.
       if (sidePanelCloseCount >= MAX_SIDE_PANEL_CLOSES) {
         logDebug('✅ [SidePanel] Max automatic closes reached. Ending automation session.');
         sidePanelSessionEnded = true;
@@ -438,11 +434,8 @@
     }
   }
 
-  // A dedicated, unthrottled MutationObserver specifically to catch React's split-second DOM updates.
   const sidePanelObserver = new MutationObserver((mutations) => {
     if (!sidePanelActive || sidePanelSessionEnded) return;
-
-    // Small optimization: quickly scan if any relevant attribute or node changed before running full check
     for (const mutation of mutations) {
       if (mutation.type === 'childList' || (mutation.type === 'attributes' && mutation.attributeName === 'aria-expanded')) {
         checkAndCloseSidePanel();
@@ -451,7 +444,6 @@
     }
   });
 
-  // Start observing instantly on attributes/childList so we don't miss a single frame.
   sidePanelObserver.observe(document.documentElement, {
     childList: true,
     subtree: true,
@@ -461,18 +453,31 @@
 
   // =========================================================================
 
-  let isSwitchingGpt = false;
-
   async function enforceGptMode() {
-    if (isSwitchingGpt || hasExecutedGptSwitch) return;
+    if (isSwitchingGpt) return;
 
     const initialSwitcher = document.getElementById('gptModeSwitcher');
     if (!initialSwitcher) return;
 
+    // Check if it's currently on "Auto"
     if (!(initialSwitcher.textContent || '').trim().includes('Auto')) {
-      // Model is correct; unlock event-driven Side Panel sequence!
+      // Model is correct! Unlock event-driven Side Panel sequence
       triggerSidePanelSequence();
       return;
+    }
+
+    // IF WE REACH HERE: The model currently says "Auto"
+
+    // If we've previously executed a switch successfully, it means React just forced it back to Auto.
+    // We will counter this by resetting the executed flag and retrying up to a certain limit.
+    if (hasExecutedGptSwitch) {
+      if (lastGptSwitchSuccess && gptReversionCount < MAX_GPT_REVERSIONS) {
+        logDebug(`🔄 React forced GPT back to Auto! Retrying switch... (${gptReversionCount + 1}/${MAX_GPT_REVERSIONS})`);
+        gptReversionCount++;
+        hasExecutedGptSwitch = false;
+      } else {
+        return; // Max retries reached, or the original switch attempt couldn't find the requested model. Give up cleanly.
+      }
     }
 
     logDebug('Detected "Auto" state. Initiating State-Machine switch sequence...');
@@ -526,6 +531,7 @@
         if (!(switcher.textContent || '').trim().includes('Auto')) {
           logDebug('✅ Switcher text updated away from "Auto". Success!');
           hasExecutedGptSwitch = true;
+          wasSuccessful = true;
           break;
         }
 
@@ -546,7 +552,7 @@
           simulateRealClick(targetOption);
           hasExecutedGptSwitch = true;
           wasSuccessful = true;
-          break; // Break loop immediately. State machine achieved its target.
+          break; // Break loop immediately
         }
 
         // 3. Are there collapsed folders/submenus? Find and Expand them
@@ -584,6 +590,9 @@
         hasExecutedGptSwitch = true;
       }
 
+      // Record success state for future reversion protection checks
+      lastGptSwitchSuccess = wasSuccessful;
+
       // Cleanup: Close the drop down menu behind us ONLY if we failed to click an item
       if (!wasSuccessful) {
         const finalSwitcher = document.getElementById('gptModeSwitcher');
@@ -616,14 +625,13 @@
     setTimeout(() => {
       isThrottled = false;
       dismissAllTips();
-      // Ensure we don't start the switcher if it's already actively processing or deliberately ended
-      if (!isSwitchingGpt && !hasExecutedGptSwitch) enforceGptMode();
+      enforceGptMode(); // We always call this on DOM changes, internal checks prevent lockups
     }, 500);
   });
 
   function startDomObservers() {
+    resetGptSession();
     resetSidePanelSession();
-    hasExecutedGptSwitch = false;
     dismissAllTips();
     enforceGptMode();
     appObserver.observe(document.body, { childList: true, subtree: true });
@@ -633,8 +641,8 @@
     const push = history.pushState;
     const replace = history.replaceState;
     const onNav = () => setTimeout(() => {
+      resetGptSession();
       resetSidePanelSession();
-      hasExecutedGptSwitch = false;
       ensureStyleInjected();
       dismissAllTips();
       enforceGptMode();
