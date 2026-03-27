@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.1.11
+// @version      1.1.12
 // @description  Dismisses Tips, enforces black UI text, preserves syntax highlighting in code editors, and auto-switches to the configured latest GPT model.
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -26,7 +26,6 @@
       ? GM_getValue("targetModelPattern", DEFAULT_PATTERN)
       : DEFAULT_PATTERN;
 
-  // Auto-migrate legacy exact matches (e.g., GPT-4, GPT-4*) to the new dynamic wildcard
   if (/^GPT[\s\-]*4/i.test(targetModelPattern)) {
       targetModelPattern = DEFAULT_PATTERN;
       if (typeof GM_setValue === 'function') {
@@ -38,12 +37,12 @@
       ? GM_getValue("debugGptSwitcher", true)
       : true;
 
-  // Track state to prevent lockups but allow for fixing React reversions
+  // State Tracking
   let isSwitchingGpt = false;
   let hasExecutedGptSwitch = false;
   let lastGptSwitchSuccess = false;
   let gptReversionCount = 0;
-  const MAX_GPT_REVERSIONS = 3; // Allow up to 3 "re-switches" if React forces it back to Auto
+  const MAX_GPT_REVERSIONS = 3;
 
   function resetGptSession() {
     hasExecutedGptSwitch = false;
@@ -52,7 +51,7 @@
     isSwitchingGpt = false;
   }
 
-  // Register menu items in Tampermonkey
+  // Register TM menu commands
   if (typeof GM_registerMenuCommand === 'function') {
     GM_registerMenuCommand(`⚙️Set Target Pattern [${targetModelPattern}]`, () => {
       const newPattern = prompt(
@@ -61,26 +60,20 @@
       );
       if (newPattern !== null && newPattern.trim() !== "") {
         targetModelPattern = newPattern.trim();
-        if (typeof GM_setValue === 'function') {
-          GM_setValue("targetModelPattern", targetModelPattern);
-        }
+        if (typeof GM_setValue === 'function') GM_setValue("targetModelPattern", targetModelPattern);
         alert(`Target model successfully set to: ${targetModelPattern}`);
       }
     });
 
     GM_registerMenuCommand(`🐞Toggle Debug Mode [${DEBUG_GPT_SWITCHER ? "ON" : "OFF"}]`, () => {
       DEBUG_GPT_SWITCHER = !DEBUG_GPT_SWITCHER;
-      if (typeof GM_setValue === 'function') {
-        GM_setValue("debugGptSwitcher", DEBUG_GPT_SWITCHER);
-      }
+      if (typeof GM_setValue === 'function') GM_setValue("debugGptSwitcher", DEBUG_GPT_SWITCHER);
       alert(`GPT Debug Mode is now: ${DEBUG_GPT_SWITCHER ? "ON" : "OFF"}`);
     });
   }
 
   function logDebug(...args) {
-    if (DEBUG_GPT_SWITCHER) {
-      console.log('%c[GPT Debug]', 'color: #0078D4; font-weight: bold;', ...args);
-    }
+    if (DEBUG_GPT_SWITCHER) console.log('%c[GPT Debug]', 'color: #0078D4; font-weight: bold;', ...args);
   }
 
   function isVisible(el) {
@@ -89,70 +82,98 @@
     return rect.width > 0 && rect.height > 0;
   }
 
-  const STYLE_ID = 'tm-force-m365-styles';
+  function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
 
+  // =========================================================================
+  //   REACT INTERACTION & FOCUS PROTECTION MANAGER
+  // =========================================================================
+
+  let isFocusFrozen = false;
+  const originalFocus = HTMLElement.prototype.focus;
+
+  // Intercept focus programmatically to protect the user's typing experience
+  HTMLElement.prototype.focus = function(options) {
+    if (isFocusFrozen) {
+      // React components often forcefully steal focus when menus open/close. We drop those requests.
+      return;
+    }
+    return originalFocus.call(this, options);
+  };
+
+  function getReactProps(el) {
+    if (!el) return null;
+    const propsKey = Object.keys(el).find(k => k.startsWith('__reactProps$') || k.startsWith('__reactEventHandlers$'));
+    if (propsKey) return el[propsKey];
+
+    // Fallback for direct Fiber traversal (React 16+)
+    const fiberKey = Object.keys(el).find(k => k.startsWith('__reactFiber$'));
+    if (fiberKey && el[fiberKey]) {
+       return el[fiberKey].memoizedProps || el[fiberKey].pendingProps;
+    }
+    return null;
+  }
+
+  // Invokes action directly on the React component bypassing standard DOM events (prevents focus loss)
+  function invokeReactAction(el) {
+    if (!el) return false;
+    const props = getReactProps(el);
+    let handled = false;
+
+    // Synthetic event matching React's internal expected shape
+    const syntheticEvent = {
+      bubbles: true,
+      cancelable: true,
+      defaultPrevented: false,
+      preventDefault: function() { this.defaultPrevented = true; },
+      stopPropagation: function() {},
+      target: el,
+      currentTarget: el,
+      type: 'click',
+      nativeEvent: new MouseEvent('click')
+    };
+
+    if (props) {
+      if (typeof props.onClick === 'function') {
+        props.onClick(syntheticEvent);
+        handled = true;
+      } else if (typeof props.onSelect === 'function') {
+        props.onSelect(syntheticEvent);
+        handled = true;
+      } else if (typeof props.onMouseDown === 'function') {
+        props.onMouseDown(syntheticEvent);
+        handled = true;
+      }
+    }
+
+    // Absolute fallback (rarely hits unless Fluent UI structure drastically changes)
+    if (!handled) el.click();
+    return true;
+  }
+
+  // =========================================================================
+
+  const STYLE_ID = 'tm-force-m365-styles';
   const css = `
-    body {
-      --colorNeutralForeground1: #000000 !important;
-      --colorNeutralForeground2: #000000 !important;
-      --colorNeutralForeground3: #000000 !important;
-    }
-    [data-testid="chatOutput"], [id^="copilot-message-"] {
-      --colorNeutralForeground1: #000000 !important;
-      --colorNeutralForeground2: #000000 !important;
-      --colorNeutralForeground3: #000000 !important;
-      color: #000000 !important;
-    }
+    body { --colorNeutralForeground1: #000000 !important; }
     [data-testid="chatOutput"] *, [id^="copilot-message-"] * {
       color: #000000 !important;
       caret-color: #000000 !important;
     }
-    [data-testid="chatOutput"] a, [data-testid="chatOutput"] a:visited, [data-testid="chatOutput"] a:hover,
-    [id^="copilot-message-"] a, [id^="copilot-message-"] a:visited, [id^="copilot-message-"] a:hover {
-      color: #000000 !important;
-    }
-    [data-testid="chatOutput"] svg, [data-testid="chatOutput"] svg *,
-    [id^="copilot-message-"] svg, [id^="copilot-message-"] svg * {
+    [data-testid="chatOutput"] svg, [id^="copilot-message-"] svg {
       fill: currentColor !important;
-      stroke: currentColor !important;
       color: #000000 !important;
     }
-    [data-testid="chatOutput"] input, [data-testid="chatOutput"] textarea, [data-testid="chatOutput"] [contenteditable="true"],
-    [id^="copilot-message-"] input, [id^="copilot-message-"] textarea, [id^="copilot-message-"] [contenteditable="true"] {
-      color: #000000 !important;
-      caret-color: #000000 !important;
-    }
-    .scriptor-pageContainer, .scriptor-pageContainer *,
-    [aria-label="Code editor"], [aria-label="Code editor"] * {
-      color: revert !important;
-      caret-color: revert !important;
-      fill: revert !important;
-      stroke: revert !important;
-      --colorNeutralForeground1: revert !important;
-      --colorNeutralForeground2: revert !important;
-      --colorNeutralForeground3: revert !important;
-    }
-
-    /* =======================================================
-       CHAT INPUT TEXT COLOR OVERRIDES
-       ======================================================= */
-    #m365-chat-editor-target-element,
     #m365-chat-editor-target-element * {
       color: #000000 !important;
       caret-color: #000000 !important;
-      --colorNeutralForeground1: #000000 !important;
-      --colorNeutralForeground2: #000000 !important;
-      --colorNeutralForeground3: #000000 !important;
-      --colorNeutralForeground4: #000000 !important;
     }
 
-    /* =======================================================
-       MENU MASKING: Hides dropdowns while script is switching
-       ======================================================= */
+    /* Menu Masking ensures the user never visually sees the dropdown flash */
     body.tm-mask-gpt-menus [role="menu"],
     body.tm-mask-gpt-menus [role="listbox"],
     body.tm-mask-gpt-menus .fui-MenuPopover,
-    body.tm-mask-gpt-menus .fui-Listbox,
     body.tm-mask-gpt-menus .ms-Layer {
       opacity: 0 !important;
       pointer-events: none !important;
@@ -160,32 +181,14 @@
       animation: none !important;
     }
 
-    /* =======================================================
-       UBLOCK REPLACEMENT: Immediate 0-Occupancy & Blocking
-       ======================================================= */
+    /* UBlock Replacements */
     .undefined.reserved-space-container,
     :not(body, html):has(> * > button[aria-label="See more prompts"]),
     .fai-PromptStarterList,
     .fai-GroundingMenu,
     button[data-testid="feedback-button-testid"],
-    [data-testid="protected-badge-tooltip-trigger"],
-    #moreButton, button[data-automation-id="moreButton"],
-    div[data-testid="accessibility-wrapped-card"],
-    div[role="dialog"][aria-modal="true"][class*="TeachingPopoverSurface"],
-
-    /* Precision block for structural NavDrawer elements */
-    footer.fui-NavDrawerFooter.fai-CopilotNavDrawerFooter > div > div:first-child,
-    footer.fui-NavDrawerFooter.fai-CopilotNavDrawerFooter > div > div:nth-child(3) {
-      opacity: 0 !important;
+    #moreButton, button[data-automation-id="moreButton"] {
       display: none !important;
-      visibility: hidden !important;
-      pointer-events: none !important;
-      width: 0 !important;
-      height: 0 !important;
-      min-height: 0 !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      overflow: hidden !important;
     }
   `;
 
@@ -198,36 +201,14 @@
   }
 
   const styleObserver = new MutationObserver(() => ensureStyleInjected());
-
   function startStyleEnforcement() {
     ensureStyleInjected();
-    const target = document.head || document.documentElement;
-    if (target) {
-      styleObserver.observe(target, { childList: true });
-    }
-  }
-
-  function simulateRealClick(element) {
-    if (!element) return;
-    const opts = { bubbles: true, cancelable: true, buttons: 1 };
-
-    if (typeof PointerEvent !== 'undefined') {
-      element.dispatchEvent(new PointerEvent('pointerdown', opts));
-      element.dispatchEvent(new PointerEvent('pointerup', opts));
-    }
-    element.dispatchEvent(new MouseEvent('mousedown', opts));
-    element.dispatchEvent(new MouseEvent('mouseup', opts));
-    element.dispatchEvent(new MouseEvent('click', opts));
-  }
-
-  function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    if (document.head || document.documentElement) styleObserver.observe(document.head || document.documentElement, { childList: true });
   }
 
   function getMenuText(el) {
     const primary = el.querySelector('[class*="primaryContentWrapper"]');
     if (primary) return (primary.textContent || '').trim();
-
     const h4 = el.querySelector('h4');
     if (h4) return (h4.textContent || '').trim();
     return (el.textContent || '').trim();
@@ -238,13 +219,11 @@
   }
 
   function findSubmenuTriggers() {
-    const candidates = document.querySelectorAll('[role="menuitem"][aria-haspopup], [role="option"][aria-haspopup], [role="menuitemradio"][aria-haspopup]');
+    const candidates = document.querySelectorAll('[role="menuitem"][aria-haspopup], [role="option"][aria-haspopup]');
     const triggers = [];
     for (const el of candidates) {
       if (el.id === 'gptModeSwitcher') continue;
-      if (el.closest('.fui-MenuPopover') || el.closest('[role="menu"]')) {
-        if (isVisible(el)) triggers.push(el);
-      }
+      if ((el.closest('.fui-MenuPopover') || el.closest('[role="menu"]')) && isVisible(el)) triggers.push(el);
     }
     return triggers;
   }
@@ -255,182 +234,106 @@
 
     for (const el of candidates) {
       if (el.id === 'gptModeSwitcher') continue;
-      if (el.closest('.fui-MenuPopover') || el.closest('[role="menu"]')) {
-         elements.push(el);
-      }
+      if (el.closest('.fui-MenuPopover') || el.closest('[role="menu"]')) elements.push(el);
     }
 
     let bestEl = null;
     let maxVersion = -1;
-
     let fallbackEl = null;
     let fallbackMaxScore = -1;
 
     const isWildcard = pattern.includes('*');
-    let regex = null;
+    let regexStr = isWildcard
+      ? pattern.split('*').map(escapeRegExp).join('(.*?)').replace(/\\-/g, '[\\s\\-]*').replace(/ /g, '\\s+')
+      : escapeRegExp(pattern).replace(/\\-/g, '[\\s\\-]*').replace(/ /g, '\\s+');
 
-    if (isWildcard) {
-      const parts = pattern.split('*');
-      let regexStr = parts.map(escapeRegExp).join('(.*?)');
-      regexStr = regexStr.replace(/\\-/g, '[\\s\\-]*');
-      regexStr = regexStr.replace(/ /g, '\\s+');
-      regex = new RegExp(regexStr, 'i');
-    } else {
-      let flexStr = escapeRegExp(pattern).replace(/\\-/g, '[\\s\\-]*').replace(/ /g, '\\s+');
-      regex = new RegExp(flexStr, 'i');
-    }
-
-    if (DEBUG_GPT_SWITCHER) {
-      const visibleOpts = elements.filter(isVisible);
-      const textArr = visibleOpts.map(e => {
-         let popup = e.getAttribute('aria-haspopup');
-         let isTrigger = popup === 'menu' || popup === 'true';
-         return `"${getMenuText(e)}"${isTrigger ? ' (trigger folder)' : ''}`;
-      });
-      if (textArr.length > 0) {
-        logDebug(`🔍 Evaluated visible options: [ ${textArr.join(', ')} ]`);
-        logDebug(`🎯 Looking for pattern: "${pattern}" (Regex: ${regex})`);
-      }
-    }
+    const regex = new RegExp(regexStr, 'i');
 
     for (const el of elements) {
       if (!isVisible(el)) continue;
+      if (el.getAttribute('aria-haspopup') === 'menu' || el.getAttribute('aria-haspopup') === 'true') continue;
 
-      const popup = el.getAttribute('aria-haspopup');
-      if (popup === 'menu' || popup === 'true') continue;
-
-      let text = getMenuText(el);
-      text = text.replace(/\s+/g, ' ').trim();
+      let text = getMenuText(el).replace(/\s+/g, ' ').trim();
       if (text === 'Auto' || text === 'More') continue;
 
       if (text.toLowerCase().includes('gpt')) {
-         const numMatch = text.match(/[0-9.]+/);
-         const versionNum = numMatch ? parseFloat(numMatch[0]) : 0;
+         const versionNum = (text.match(/[0-9.]+/) || [0])[0];
          const isThink = text.toLowerCase().includes('think') || text.toLowerCase().includes('reason');
-         const score = versionNum + (isThink ? 0.01 : 0);
-
-         if (score > fallbackMaxScore) {
-             fallbackMaxScore = score;
-             fallbackEl = el;
-         }
+         const score = parseFloat(versionNum) + (isThink ? 0.01 : 0);
+         if (score > fallbackMaxScore) { fallbackMaxScore = score; fallbackEl = el; }
       }
 
       const match = text.match(regex);
       if (match) {
         if (isWildcard) {
-          const wildcardContent = match[1] || '0';
-          const numMatch = wildcardContent.match(/[0-9.]+/);
-          const versionNum = numMatch ? parseFloat(numMatch[0]) : 0;
-
+          const versionNum = (match[1].match(/[0-9.]+/) || [0])[0];
           const isThink = text.toLowerCase().includes('think') || text.toLowerCase().includes('reason');
-          const score = versionNum + (isThink ? 0.01 : 0);
-
-          if (score > maxVersion) {
-            maxVersion = score;
-            bestEl = el;
-          }
+          const score = parseFloat(versionNum) + (isThink ? 0.01 : 0);
+          if (score > maxVersion) { maxVersion = score; bestEl = el; }
         } else {
           return el;
         }
       }
     }
-
-    if (bestEl) {
-       if (DEBUG_GPT_SWITCHER) logDebug(`✅ Perfect match found: "${getMenuText(bestEl)}"`);
-       return bestEl;
-    }
-
-    if (fallbackEl) {
-       if (DEBUG_GPT_SWITCHER) logDebug(`⚠️ Exact pattern not found. Smart Fallback selected: "${getMenuText(fallbackEl)}"`);
-       return fallbackEl;
-    }
-
-    return null;
+    return bestEl || fallbackEl;
   }
 
-  const TIP_DIALOG_SELECTOR = 'div[role="dialog"][aria-label="Tips"]';
-  const HANDLED_ATTR = 'data-tm-handled';
-
   function dismissAllTips() {
-    const dialogs = document.querySelectorAll(TIP_DIALOG_SELECTOR);
+    const dialogs = document.querySelectorAll('div[role="dialog"][aria-label="Tips"]');
     for (const dialog of dialogs) {
-      if (dialog.getAttribute(HANDLED_ATTR) === '1') continue;
-      let btn = dialog.querySelector('button[aria-label="Dismiss"]') ||
-                dialog.querySelector('button[aria-label="Got it"]');
-      if (!btn) {
-        const buttons = dialog.querySelectorAll('button');
-        for (const b of buttons) {
-          const text = (b.textContent || '').trim().toLowerCase();
-          if (text === 'dismiss' || text === 'got it') {
-            btn = b; break;
-          }
-        }
-      }
+      if (dialog.getAttribute('data-tm-handled') === '1') continue;
+      let btn = dialog.querySelector('button[aria-label="Dismiss"]') || dialog.querySelector('button[aria-label="Got it"]');
       if (btn) {
-        dialog.setAttribute(HANDLED_ATTR, '1');
-        btn.click();
+        dialog.setAttribute('data-tm-handled', '1');
+        invokeReactAction(btn);
       }
     }
   }
 
   // =========================================================================
-  //   INSTANT EVENT-DRIVEN SIDE PANEL MANAGER
+  //   SIDE PANEL MANAGER
   // =========================================================================
 
   let sidePanelActive = false;
   let sidePanelSessionEnded = false;
-  let sidePanelCloseCount = 0;
-  const MAX_SIDE_PANEL_CLOSES = 2;
   let sidePanelFailSafeTimer = null;
 
   function resetSidePanelSession() {
     sidePanelActive = false;
     sidePanelSessionEnded = false;
-    sidePanelCloseCount = 0;
     if (sidePanelFailSafeTimer) clearTimeout(sidePanelFailSafeTimer);
-
     sidePanelFailSafeTimer = setTimeout(() => {
-      if (!sidePanelActive && !sidePanelSessionEnded) {
-        logDebug('⏳ [SidePanel] GPT Model fallback timer triggered. Activating panel check.');
-        triggerSidePanelSequence();
-      }
+      if (!sidePanelActive && !sidePanelSessionEnded) triggerSidePanelSequence();
     }, 4000);
   }
 
   function triggerSidePanelSequence() {
     if (sidePanelActive || sidePanelSessionEnded) return;
     sidePanelActive = true;
-
-    logDebug('🚀 [SidePanel] Model selection complete. Activating instant event-driven close sequence...');
     checkAndCloseSidePanel();
-
     if (sidePanelFailSafeTimer) clearTimeout(sidePanelFailSafeTimer);
-    sidePanelFailSafeTimer = setTimeout(() => {
-      logDebug('🏁 [SidePanel] 8-second window expired. Returning manual control to user.');
-      sidePanelSessionEnded = true;
-    }, 8000);
+    sidePanelFailSafeTimer = setTimeout(() => { sidePanelSessionEnded = true; }, 8000);
   }
 
   function checkAndCloseSidePanel() {
     if (!sidePanelActive || sidePanelSessionEnded) return;
-
     const headerAnchor = document.querySelector('header.fui-NavDrawerHeader.fai-CopilotNavDrawerHeader');
     if (!headerAnchor) return;
 
     const collapseBtn = headerAnchor.querySelector('button[data-testid="collapse-button"]');
-
     if (collapseBtn && isVisible(collapseBtn) && collapseBtn.getAttribute('aria-expanded') !== 'false') {
-      logDebug(`⚡ [SidePanel Event] Open panel detected! Closing instantly... (Action ${sidePanelCloseCount + 1}/${MAX_SIDE_PANEL_CLOSES})`);
 
-      simulateRealClick(collapseBtn);
-      try { collapseBtn.click(); } catch (e) {}
+      const typingTracker = document.activeElement;
+      isFocusFrozen = true; // Lock focus so sidebar doesn't steal focus on closing
 
-      sidePanelCloseCount++;
+      invokeReactAction(collapseBtn);
 
-      if (sidePanelCloseCount >= MAX_SIDE_PANEL_CLOSES) {
-        logDebug('✅ [SidePanel] Max automatic closes reached. Ending automation session.');
-        sidePanelSessionEnded = true;
+      isFocusFrozen = false;
+      if (typingTracker && document.activeElement !== typingTracker) {
+          originalFocus.call(typingTracker); // Guarantee restoral
       }
+
+      sidePanelSessionEnded = true;
     }
   }
 
@@ -438,19 +341,15 @@
     if (!sidePanelActive || sidePanelSessionEnded) return;
     for (const mutation of mutations) {
       if (mutation.type === 'childList' || (mutation.type === 'attributes' && mutation.attributeName === 'aria-expanded')) {
-        checkAndCloseSidePanel();
-        break;
+        checkAndCloseSidePanel(); break;
       }
     }
   });
 
-  sidePanelObserver.observe(document.documentElement, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    attributeFilter: ['aria-expanded', 'class']
-  });
+  sidePanelObserver.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-expanded', 'class'] });
 
+  // =========================================================================
+  //   MAIN LOGIC ROUTINE
   // =========================================================================
 
   async function enforceGptMode() {
@@ -459,165 +358,103 @@
     const initialSwitcher = document.getElementById('gptModeSwitcher');
     if (!initialSwitcher) return;
 
-    // Check if it's currently on "Auto"
     if (!(initialSwitcher.textContent || '').trim().includes('Auto')) {
-      // Model is correct! Unlock event-driven Side Panel sequence
       triggerSidePanelSequence();
       return;
     }
 
-    // IF WE REACH HERE: The model currently says "Auto"
-
-    // If we've previously executed a switch successfully, it means React just forced it back to Auto.
-    // We will counter this by resetting the executed flag and retrying up to a certain limit.
     if (hasExecutedGptSwitch) {
       if (lastGptSwitchSuccess && gptReversionCount < MAX_GPT_REVERSIONS) {
-        logDebug(`🔄 React forced GPT back to Auto! Retrying switch... (${gptReversionCount + 1}/${MAX_GPT_REVERSIONS})`);
         gptReversionCount++;
         hasExecutedGptSwitch = false;
-      } else {
-        return; // Max retries reached, or the original switch attempt couldn't find the requested model. Give up cleanly.
-      }
+      } else return;
     }
 
-    logDebug('Detected "Auto" state. Initiating State-Machine switch sequence...');
+    logDebug('Initiating React-based switch sequence...');
     isSwitchingGpt = true;
     document.body.classList.add('tm-mask-gpt-menus');
 
-    const activeEl = document.activeElement;
-    const activeElId = activeEl && activeEl.id ? activeEl.id : null;
-    let selStart = null;
-    let selEnd = null;
-
-    if (activeEl && (activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'INPUT')) {
-      try {
-        selStart = activeEl.selectionStart;
-        selEnd = activeEl.selectionEnd;
-      } catch (e) {}
-    }
-
-    const restoreCursor = () => {
-      let elToFocus = null;
-      if (activeEl && document.body.contains(activeEl)) {
-        elToFocus = activeEl;
-      } else if (activeElId) {
-        elToFocus = document.getElementById(activeElId);
-      } else {
-        elToFocus = document.querySelector('#userInput, #m365-chat-editor-target-element, textarea[data-testid], [contenteditable="true"][role="textbox"], textarea');
-      }
-
-      if (elToFocus) {
-        elToFocus.focus();
-        if (selStart !== null && selEnd !== null && typeof elToFocus.setSelectionRange === 'function') {
-          try { elToFocus.setSelectionRange(selStart, selEnd); } catch (e) {}
-        }
-      }
-    };
+    // Protect user keystrokes from React programmatic focus pulls
+    isFocusFrozen = true;
+    const activeUserEl = document.activeElement;
 
     let wasSuccessful = false;
 
     try {
       let attempts = 0;
-      const maxAttempts = 30;
-      const loopSleepMs = 150;
       let stableTicks = 0;
 
-      while (attempts < maxAttempts) {
+      while (attempts < 30) {
         attempts++;
-
         const switcher = document.getElementById('gptModeSwitcher');
         if (!switcher) break;
 
         if (!(switcher.textContent || '').trim().includes('Auto')) {
-          logDebug('✅ Switcher text updated away from "Auto". Success!');
           hasExecutedGptSwitch = true;
           wasSuccessful = true;
           break;
         }
 
-        // 1. Is the main switcher open?
         const isSwitcherExpanded = switcher.getAttribute('aria-expanded') === 'true';
         if (!isSwitcherExpanded) {
-           logDebug(`Tick ${attempts}: Main menu is closed. Clicking switcher to open.`);
-           simulateRealClick(switcher);
+           invokeReactAction(switcher);
            stableTicks = 0;
-           await sleep(loopSleepMs);
+           await sleep(150);
            continue;
         }
 
-        // 2. Can we find the target option?
         const targetOption = findBestModelOption(targetModelPattern);
         if (targetOption) {
-          logDebug(`Tick ${attempts}: Found target! Initiating click on "${getMenuText(targetOption)}".`);
-          simulateRealClick(targetOption);
+          invokeReactAction(targetOption);
           hasExecutedGptSwitch = true;
           wasSuccessful = true;
-          break; // Break loop immediately
+          break;
         }
 
-        // 3. Are there collapsed folders/submenus? Find and Expand them
         const triggers = findSubmenuTriggers();
-        let unexpandedTrigger = null;
-        for (const t of triggers) {
-          if (t.getAttribute('aria-expanded') !== 'true') {
-            unexpandedTrigger = t;
-            break;
-          }
-        }
+        const unexpandedTrigger = triggers.find(t => t.getAttribute('aria-expanded') !== 'true');
 
         if (unexpandedTrigger) {
-          logDebug(`Tick ${attempts}: Found collapsed submenu trigger. Clicking to expand.`);
-          simulateRealClick(unexpandedTrigger);
+          invokeReactAction(unexpandedTrigger);
           stableTicks = 0;
-          await sleep(loopSleepMs);
+          await sleep(150);
           continue;
         }
 
-        // 4. Wait natively if DOM is fully expanded but catching up on render
-        logDebug(`Tick ${attempts}: Menu & submenus are open but options not found yet, waiting... (Stable ticks: ${stableTicks})`);
         stableTicks++;
         if (stableTicks > 10) {
-           logDebug('❌ Target model not found after completely exhausting submenus. Gracefully aborting to prevent UI lock.');
            hasExecutedGptSwitch = true;
            break;
         }
 
-        await sleep(loopSleepMs);
+        await sleep(150);
       }
 
-      if (attempts >= maxAttempts) {
-        logDebug('❌ Reached max DOM query attempts. Bailing out.');
-        hasExecutedGptSwitch = true;
-      }
-
-      // Record success state for future reversion protection checks
+      if (attempts >= 30) hasExecutedGptSwitch = true;
       lastGptSwitchSuccess = wasSuccessful;
 
-      // Cleanup: Close the drop down menu behind us ONLY if we failed to click an item
       if (!wasSuccessful) {
         const finalSwitcher = document.getElementById('gptModeSwitcher');
-        if (finalSwitcher && finalSwitcher.getAttribute('aria-expanded') === 'true') {
-          simulateRealClick(finalSwitcher);
-        }
+        if (finalSwitcher && finalSwitcher.getAttribute('aria-expanded') === 'true') invokeReactAction(finalSwitcher);
       }
 
     } catch (err) {
       console.error("%c[GPT Debug] Switch Error:", 'color: red', err);
     } finally {
-      logDebug('Sequence finished. Executing cursor restoration...');
-      restoreCursor();
+      // Release focus lock and safeguard the original input field
+      isFocusFrozen = false;
+      if (activeUserEl && document.activeElement !== activeUserEl) {
+        originalFocus.call(activeUserEl);
+      }
 
       setTimeout(() => {
         document.body.classList.remove('tm-mask-gpt-menus');
         isSwitchingGpt = false;
-
-        // Unlock event-driven Side Panel sequence now that we are done switching!
         triggerSidePanelSequence();
       }, 500);
     }
   }
 
-  // Throttled main app observer (for Tips & triggering Model switcher)
   let isThrottled = false;
   const appObserver = new MutationObserver(() => {
     if (isThrottled) return;
@@ -625,7 +462,7 @@
     setTimeout(() => {
       isThrottled = false;
       dismissAllTips();
-      enforceGptMode(); // We always call this on DOM changes, internal checks prevent lockups
+      enforceGptMode();
     }, 500);
   });
 
@@ -648,26 +485,14 @@
       enforceGptMode();
     }, 200);
 
-    history.pushState = function (...args) {
-      const ret = push.apply(this, args);
-      onNav();
-      return ret;
-    };
-    history.replaceState = function (...args) {
-      const ret = replace.apply(this, args);
-      onNav();
-      return ret;
-    };
+    history.pushState = function (...args) { const ret = push.apply(this, args); onNav(); return ret; };
+    history.replaceState = function (...args) { const ret = replace.apply(this, args); onNav(); return ret; };
     window.addEventListener('popstate', onNav, { passive: true });
   }
 
   startStyleEnforcement();
-
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      startDomObservers();
-      hookHistory();
-    }, { once: true });
+    document.addEventListener('DOMContentLoaded', () => { startDomObservers(); hookHistory(); }, { once: true });
   } else {
     startDomObservers();
     hookHistory();
