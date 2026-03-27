@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.1.15
+// @version      1.1.17
 // @description  Dismisses Tips, enforces black UI text, preserves syntax highlighting in code editors, and auto-switches to the configured latest GPT model.
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -217,6 +217,27 @@
       margin: 0 !important;
       padding: 0 !important;
       overflow: hidden !important;
+    }
+
+    /* NEW BLOCK: HIDE AGENTS, LIBRARY, AND CREATE MENUS */
+
+    /* 1. Hide 'Library' and 'Create' standard buttons */
+    button[aria-label="Library"],
+    button[aria-label="Create"] {
+        display: none !important;
+    }
+
+    /* 2. Hide the 'Agents' header and its immediate parent wrapper */
+    div:has(> .fai-SplitCopilotNavCategoryItem),
+    .fai-SplitCopilotNavCategoryItem {
+        display: none !important;
+    }
+
+    /* 3. Hide 'Agents' sub-items (New agent, All agents) and their wrapper */
+    .fui-NavSubItemGroup:has(button[value="new-agent"]),
+    button[value="new-agent"],
+    button[value="all-agents"] {
+        display: none !important;
     }
   `;
 
