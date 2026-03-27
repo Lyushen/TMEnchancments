@@ -4,8 +4,8 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.04004
-// @description  Block elements on 4pda.to
+// @version      1.04006
+// @description  4pda optimisations
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
 // @updateURL    https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/4pda_Optimisations.js
@@ -15,7 +15,6 @@
 // @run-at       document-start
 // @match        *://4pda.to/*
 // ==/UserScript==
-//4pda.to##article[class^="post"]:has(div>h2>a[title*="HUAWEI"])
 
 (function() {
     'use strict';
@@ -23,93 +22,89 @@
     const keywordsUrl = 'https://raw.githubusercontent.com/Lyushen/TMEnchancments/main/4pda_keywords.txt';
     const storageKey = 'storedKeywords';
     const storageTimeKey = 'storedKeywordsTimestamp';
-    const cooldownPeriod = 20 * 1000; // 20 seconds in milliseconds
+    const cooldownPeriod = 20 * 1000; // 20 seconds
 
-     const applyCSSRules = (rules) => {
-        if (!document.getElementById("customTampermonkeyStyles")) {
+    let backgroundRemoved = false; // Flag to stop heavy DOM scanning once successful
+
+    // Utility: Safe CSS injection at document-start
+    const applyCSSRules = (rules, id) => {
+        if (!document.getElementById(id)) {
             const blockStyle = document.createElement('style');
-            blockStyle.id = "customTampermonkeyStyles";
-            blockStyle.innerHTML = rules;
-            document.head.appendChild(blockStyle);
+            blockStyle.id = id;
+            blockStyle.textContent = rules;
+            // Append to documentElement because <head> might not exist at document-start
+            (document.head || document.documentElement).appendChild(blockStyle);
         }
     };
 
-    const hideSliderContainers = () => {
-        document.querySelectorAll('[style*="overflow: hidden"][style*="height:"]').forEach(container => {
-            const sliderLists = container.querySelectorAll(':scope > .slider-list');
-            if (sliderLists.length >= 2) {
-                container.style.display = 'none';
+    // 1. IMMUTABLE STATIC CSS (Occupancy 0 approach)
+    // We delegate as much as possible to the browser's native CSS engine for zero-delay hiding
+    const injectStaticCSS = () => {
+        const staticRules = `
+            /* Occupancy 0 overrides to ensure complete removal from render tree */
+            .tm-occupancy-zero,
+            article[class*="wide-1"],
+            article[class*="wide-2"],
+            article[class*="wide-3"],
+            lek:has(a[target="_blank"]),
+            li.menu-main-item:has(a[href*="utm_source"]),
+            a[role="button"],
+            footer,
+            div.container[itemscope][itemtype="http://schema.org/Article"][data-ztm] ~ *,
+            div[style*="overflow: hidden"][style*="height:"]:has(> .slider-list + .slider-list),
+            article:not(:has(> div:nth-child(3))),
+            *:has(> .slider-list + .slider-list + .slider-list),
+            .menu-brands {
+                display: none !important;
+                width: 0 !important;
+                height: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+                position: absolute !important;
+                overflow: hidden !important;
+                contain: strict !important;
             }
-        });
+
+            /* Container width resets */
+            div.container[itemscope][itemtype="http://schema.org/Article"][data-ztm] {
+                width: auto !important;
+                max-width: none !important;
+                min-width: 0 !important;
+            }
+
+            /* Dynamically adjust parent layout without JS using :has() */
+            div:has(> div.container[itemscope][itemtype="http://schema.org/Article"][data-ztm]) {
+                width: auto !important;
+                max-width: none !important;
+                min-width: 0 !important;
+            }
+        `;
+        applyCSSRules(staticRules, "tm-static-styles");
     };
 
-    // NEW FUNCTION: Adjust parent container and hide footers
-    const adjustLayout = () => {
-        // Find and adjust the specific container parent
-        const containers = document.querySelectorAll('div.container[itemscope][itemtype="http://schema.org/Article"][data-ztm]');
-        containers.forEach(container => {
-            const parent = container.parentElement;
-            if (parent) {
-                // Remove width restrictions
-                parent.style.width = 'auto';
-                parent.style.maxWidth = 'none';
-                parent.style.minWidth = '0';
-
-                // Remove all inline width styles
-                parent.style.removeProperty('width');
-                parent.style.removeProperty('max-width');
-                parent.style.removeProperty('min-width');
-
-                // Remove responsive classes that might set widths
-                parent.classList.remove('col-md-10', 'col-lg-8', 'col-xl-6', 'col-xxl-4');
-            }
-        });
-
-        // Hide all footer elements
-        document.querySelectorAll('footer').forEach(footer => {
-            footer.style.display = 'none';
-        });
-    };
-
-    const hideArticles = () => {
+    // 2. JAVASCRIPT FALLBACKS (For conditions too complex for pure CSS)
+    const hideArticlesJS = () => {
         const articles = document.querySelectorAll('article[class^="post"]');
         articles.forEach(article => {
-            const bgColor = getComputedStyle(article).backgroundColor;
-            if (bgColor === "rgb(90, 111, 122)" || /wide-[123]/.test(article.className)) {
-                article.style.display = 'none';
+            const bgColor = window.getComputedStyle(article).backgroundColor;
+            // Target specific background color
+            if (bgColor === "rgb(90, 111, 122)") {
+                article.style.setProperty('display', 'none', 'important');
             }
         });
 
+        // Specific script ad injections
         const scripts = document.querySelectorAll('script');
         scripts.forEach(script => {
             if (script.textContent.includes('cw=document.body.clientWidth')) {
                 let parentElement = script.parentElement;
                 let imgElement = parentElement.querySelector('img[src^="https://4pda.to/s/"]');
-                if (imgElement) {
-                    parentElement.style.display = 'none';
+                if (imgElement && parentElement.style.display !== 'none') {
+                    parentElement.style.setProperty('display', 'none', 'important');
                 }
             }
-        });
-
-        const lekElements = document.querySelectorAll('lek');
-        lekElements.forEach(lek => {
-            const aTag = lek.querySelector('a[target="_blank"]');
-            if (aTag) {
-                lek.style.display = 'none';
-            }
-        });
-
-        const promotionalLinks = document.querySelectorAll('a[href*="utm_source"]');
-        promotionalLinks.forEach(link => {
-            let parentElement = link.closest('li');
-            if (parentElement && parentElement.classList.contains('menu-main-item')) {
-                parentElement.style.display = 'none';
-            }
-        });
-
-        const buttonRoleLinks = document.querySelectorAll('a[role="button"]');
-        buttonRoleLinks.forEach(link => {
-            link.style.display = 'none';
         });
     };
 
@@ -117,119 +112,104 @@
         const ytOverlays = document.querySelectorAll('a.yt-p-overlay[data-yt-player]');
         ytOverlays.forEach(overlay => {
             const iframeHTML = overlay.getAttribute('data-yt-player');
-            if (iframeHTML) {
-                overlay.outerHTML = iframeHTML;
-            }
+            if (iframeHTML) overlay.outerHTML = iframeHTML;
         });
     };
 
-    const pollDOM = (callback) => {
-        callback();
-        requestAnimationFrame(() => setTimeout(() => pollDOM(callback), 1000)); // Check once per second
-    };
+    const remove4pdaBackground = () => {
+        if (backgroundRemoved) return; // Save CPU if we already did this
 
-    const loadKeywords = async () => {
-        try {
-            const response = await fetch(keywordsUrl);
-            if (!response.ok) {
-                throw new Error(`Failed to fetch keywords from ${keywordsUrl}`);
-            }
-            const text = await response.text();
-            const keywords = text.split('\n').map(keyword => keyword.trim()).filter(keyword => keyword);
-
-            GM_setValue(storageKey, keywords);
-            GM_setValue(storageTimeKey, Date.now());
-
-            return keywords;
-        } catch (error) {
-            console.error('Error loading keywords:', error);
-            return null;
-        }
-    };
-
-    const initialize = async () => {
-        let keywords = GM_getValue(storageKey, null);
-        const lastUpdateTime = GM_getValue(storageTimeKey, 0);
-
-        if (!keywords || Date.now() - lastUpdateTime > cooldownPeriod) {
-            keywords = await loadKeywords();
-        }
-
-        if (keywords) {
-            let cssRules = keywords.map(keyword => `article[class^="post"]:has(div>h2>a[title*="${keyword}"]) { display: none !important; }`).join(' ');
-
-            cssRules += `
-                article:not(:has(> div:nth-child(3))) { display: none !important; }
-                *:has(> .slider-list + .slider-list + .slider-list) { display: none !important; }
-                .menu-brands { display: none !important; }
-
-                /* NEW: Hide all footers and adjust container parent */
-                footer { display: none !important; }
-                div.container[itemscope][itemtype="http://schema.org/Article"][data-ztm] ~ * { display: none; }
-                div.container[itemscope][itemtype="http://schema.org/Article"][data-ztm] {
-                    width: auto !important;
-                    max-width: none !important;
-                    min-width: 0 !important;
-                }
-            `;
-
-            applyCSSRules(cssRules);
-            pollDOM(() => {
-                hideArticles();
-                convertYouTubeOverlayToIframe();
-                hideSliderContainers();
-                adjustLayout(); // ADDED TO POLLING LOOP
-            });
-        }
-    };
-    // Function to remove 4pda background elements
-    function remove4pdaBackground() {
-        console.log('Searching for elements with 4pda background...');
-
-        const allElements = document.querySelectorAll('*');
+        const allElements = document.querySelectorAll('body, div, main, html'); // Restricted scope for performance
         let foundElement = null;
 
         for (const el of allElements) {
             const style = window.getComputedStyle(el);
             const bgImage = style.backgroundImage;
 
-            // Check if background contains 4pda URL pattern
-            if (bgImage.includes('4pda.to/s/') && bgImage.includes('.jpg')) {
-                console.log('Found element with 4pda background:', el);
-                console.log('Background image:', bgImage);
-                console.log('Current padding:', style.padding);
-                console.log('Current padding-bottom:', style.paddingBottom);
+            if ((bgImage.includes('4pda.to/s/') && bgImage.includes('.jpg')) || style.backgroundColor === 'rgb(230, 231, 233)') {
                 foundElement = el;
                 break;
             }
         }
 
-        // If first method fails, check for elements with specific color
-        if (!foundElement) {
-            console.log('Trying alternative detection method...');
-            for (const el of allElements) {
-                const style = window.getComputedStyle(el);
-                if (style.backgroundColor === 'rgb(230, 231, 233)') {
-                    console.log('Found element with matching background color:', el);
-                    console.log('Current padding:', style.padding);
-                    console.log('Current padding-bottom:', style.paddingBottom);
-                    foundElement = el;
-                    break;
-                }
-            }
-        }
-
-        // Remove background and padding if element found
         if (foundElement) {
             foundElement.style.setProperty('background', 'none', 'important');
             foundElement.style.setProperty('padding', '0', 'important');
             foundElement.style.setProperty('padding-bottom', '0', 'important');
-            console.log('Background and padding removed successfully');
-        } else {
-            console.log('No matching element found after all detection methods');
+            backgroundRemoved = true; // Stop searching in future polls
         }
-    }
+    };
 
-    remove4pdaBackground();
+    const adjustLayoutJS = () => {
+        // Fallback for older browsers that don't support CSS :has()
+        const containers = document.querySelectorAll('div.container[itemscope][itemtype="http://schema.org/Article"][data-ztm]');
+        containers.forEach(container => {
+            const parent = container.parentElement;
+            if (parent && parent.style.width !== 'auto') {
+                parent.style.setProperty('width', 'auto', 'important');
+                parent.style.setProperty('max-width', 'none', 'important');
+                parent.style.setProperty('min-width', '0', 'important');
+                parent.classList.remove('col-md-10', 'col-lg-8', 'col-xl-6', 'col-xxl-4');
+            }
+        });
+    };
+
+    // 3. ASYNC KEYWORD FETCHING
+    const loadKeywordsAsync = async () => {
+        try {
+            let keywords = GM_getValue(storageKey, null);
+            const lastUpdateTime = GM_getValue(storageTimeKey, 0);
+
+            if (!keywords || Date.now() - lastUpdateTime > cooldownPeriod) {
+                const response = await fetch(keywordsUrl);
+                if (response.ok) {
+                    const text = await response.text();
+                    keywords = text.split('\n').map(k => k.trim()).filter(k => k);
+                    GM_setValue(storageKey, keywords);
+                    GM_setValue(storageTimeKey, Date.now());
+                }
+            }
+
+            if (keywords && keywords.length > 0) {
+                // Ignore case (" i") is used in CSS attributes
+                const rules = keywords.map(keyword =>
+                    `article[class^="post"]:has(div>h2>a[title*="${keyword}" i]) {
+                        display: none !important;
+                        width: 0 !important;
+                        height: 0 !important;
+                    }`
+                ).join('\n');
+                applyCSSRules(rules, 'tm-dynamic-keywords');
+            }
+        } catch (error) {
+            console.error('TM Enhancements: Error loading keywords in background', error);
+        }
+    };
+
+    // 4. MAIN EXECUTION LOOP
+    const pollDOM = () => {
+        hideArticlesJS();
+        convertYouTubeOverlayToIframe();
+        adjustLayoutJS();
+        remove4pdaBackground();
+
+        // Loop recursively, yielding to browser rendering
+        requestAnimationFrame(() => setTimeout(pollDOM, 1000));
+    };
+
+    // Initialize parallel processes
+    const initialize = () => {
+        // 1. Immediately inject safe static CSS (blocks ads/layouts at render-time)
+        injectStaticCSS();
+
+        // 2. Start polling the DOM for runtime JS cleanup
+        pollDOM();
+
+        // 3. Fetch keywords in the background safely without blocking the thread
+        // We do this concurrently so the UI is highly responsive
+        loadKeywordsAsync();
+    };
+
     initialize();
+
 })();
