@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.1.17
+// @version      1.1.18
 // @description  Dismisses Tips, enforces black UI text, preserves syntax highlighting in code editors, and auto-switches to the configured latest GPT model.
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -238,6 +238,25 @@
     button[value="new-agent"],
     button[value="all-agents"] {
         display: none !important;
+    }
+
+    /* =========================================================================
+       CHAT INPUT SCROLL FIX
+       Prevents the multi-line chat input from expanding infinitely and
+       pushing UI off the screen. Restricts it to ~4 lines by default,
+       and enables scrollbars.
+       ========================================================================= */
+
+    #m365-chat-editor-target-element {
+        display: block !important;
+        overflow-y: auto !important;
+        max-height: 110px !important; /* Safely limits to roughly 4-5 lines */
+        scrollbar-width: thin !important;
+    }
+
+    /* Allow expanding further when the user actively clicks the Expand button */
+    #m365-chat-input-shared-wrapper:has(button[aria-label="Expand"][aria-pressed="true"]) #m365-chat-editor-target-element {
+        max-height: 50vh !important;
     }
   `;
 
