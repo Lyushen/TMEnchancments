@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.1.12
+// @version      1.1.13
 // @description  Dismisses Tips, enforces black UI text, preserves syntax highlighting in code editors, and auto-switches to the configured latest GPT model.
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -187,8 +187,31 @@
     .fai-PromptStarterList,
     .fai-GroundingMenu,
     button[data-testid="feedback-button-testid"],
-    #moreButton, button[data-automation-id="moreButton"] {
+    [data-testid="protected-badge-tooltip-trigger"],
+    #moreButton, button[data-automation-id="moreButton"],
+    div[data-testid="accessibility-wrapped-card"],
+    div[role="dialog"][aria-modal="true"][class*="TeachingPopoverSurface"] {
       display: none !important;
+    }
+
+    /* Precision block for structural NavDrawer elements - ORDER INDEPENDENT */
+    /* Targets any column in the footer row that DOES NOT contain user profile elements */
+    footer[class*="NavDrawerFooter"] > div > div:not(:has(
+      #user-account-avatar,
+      [class*="Avatar"],
+      button[aria-label="Settings and more"],
+      [id^="avatar-"]
+    )) {
+      opacity: 0 !important;
+      display: none !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+      width: 0 !important;
+      height: 0 !important;
+      min-height: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: hidden !important;
     }
   `;
 
