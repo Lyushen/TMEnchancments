@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.1.18
+// @version      1.1.19
 // @description  Dismisses Tips, enforces black UI text, preserves syntax highlighting in code editors, and auto-switches to the configured latest GPT model.
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -87,7 +87,7 @@
   }
 
   // =========================================================================
-  //   REACT INTERACTION & FOCUS PROTECTION MANAGER
+  //   REACT INTERACTION, FOCUS & CLIPBOARD MANAGER
   // =========================================================================
 
   let isFocusFrozen = false;
@@ -101,6 +101,21 @@
     }
     return originalFocus.call(this, options);
   };
+
+  // Intercept Clipboard to strip markdown artifacts from "Copy Code" button payloads
+  // (Because Lexical React state retains the backticks even if we hide them in the DOM)
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    const originalWriteText = navigator.clipboard.writeText;
+    navigator.clipboard.writeText = function(text) {
+      if (typeof text === 'string') {
+        // Strip leftover leading markdown (e.g., ```python) and trailing (```)
+        let cleanText = text.replace(/^`{2,3}[a-zA-Z0-9-]*\s*[\r\n]+/, '');
+        cleanText = cleanText.replace(/[\r\n]+\s*`{2,3}\s*$/, '');
+        return originalWriteText.call(this, cleanText);
+      }
+      return originalWriteText.apply(this, arguments);
+    };
+  }
 
   function getReactProps(el) {
     if (!el) return null;
@@ -219,42 +234,28 @@
       overflow: hidden !important;
     }
 
-    /* NEW BLOCK: HIDE AGENTS, LIBRARY, AND CREATE MENUS */
-
-    /* 1. Hide 'Library' and 'Create' standard buttons */
+    /* HIDE AGENTS, LIBRARY, AND CREATE MENUS */
     button[aria-label="Library"],
     button[aria-label="Create"] {
         display: none !important;
     }
-
-    /* 2. Hide the 'Agents' header and its immediate parent wrapper */
     div:has(> .fai-SplitCopilotNavCategoryItem),
     .fai-SplitCopilotNavCategoryItem {
         display: none !important;
     }
-
-    /* 3. Hide 'Agents' sub-items (New agent, All agents) and their wrapper */
     .fui-NavSubItemGroup:has(button[value="new-agent"]),
     button[value="new-agent"],
     button[value="all-agents"] {
         display: none !important;
     }
 
-    /* =========================================================================
-       CHAT INPUT SCROLL FIX
-       Prevents the multi-line chat input from expanding infinitely and
-       pushing UI off the screen. Restricts it to ~4 lines by default,
-       and enables scrollbars.
-       ========================================================================= */
-
+    /* CHAT INPUT SCROLL FIX */
     #m365-chat-editor-target-element {
         display: block !important;
         overflow-y: auto !important;
-        max-height: 110px !important; /* Safely limits to roughly 4-5 lines */
+        max-height: 110px !important;
         scrollbar-width: thin !important;
     }
-
-    /* Allow expanding further when the user actively clicks the Expand button */
     #m365-chat-input-shared-wrapper:has(button[aria-label="Expand"][aria-pressed="true"]) #m365-chat-editor-target-element {
         max-height: 50vh !important;
     }
@@ -366,24 +367,21 @@
     // Target the outermost code editor wrapping container
     const editors = document.querySelectorAll('.scriptor-code-editor');
     editors.forEach(editor => {
-      // Inline function to check and clean specific paragraphs
       const checkAndClean = (paragraph) => {
         if (!paragraph) return;
         const textRun = paragraph.querySelector('.scriptor-textRun');
         if (textRun) {
           const text = textRun.textContent.trim();
-          // Matches common leftover markdown codeblock delimiters
-          if (text === '``' || text === '```') {
-            // 1. Wipe text content: prevents native DOM-based Copy buttons from reading it
+          // Smarter regex: Matches "``", "```", "```python", etc.
+          if (/^`{2,3}[a-zA-Z0-9-]*$/.test(text)) {
+            // 1. Wipe text content visually
             if (textRun.textContent !== '') textRun.textContent = '';
-            // 2. Hide visually: collapses the empty space
+            // 2. Hide visually to collapse the empty space
             if (paragraph.style.display !== 'none') paragraph.style.display = 'none';
           }
         }
       };
 
-      // By exclusively checking the very first and very last line of code blocks,
-      // we guarantee we never accidentally hide actual code (e.g. template literals)
       checkAndClean(editor.firstElementChild);
       checkAndClean(editor.lastElementChild);
     });
@@ -423,13 +421,13 @@
     if (collapseBtn && isVisible(collapseBtn) && collapseBtn.getAttribute('aria-expanded') !== 'false') {
 
       const typingTracker = document.activeElement;
-      isFocusFrozen = true; // Lock focus so sidebar doesn't steal focus on closing
+      isFocusFrozen = true;
 
       invokeReactAction(collapseBtn);
 
       isFocusFrozen = false;
       if (typingTracker && document.activeElement !== typingTracker) {
-          originalFocus.call(typingTracker); // Guarantee restoral
+          originalFocus.call(typingTracker);
       }
 
       sidePanelSessionEnded = true;
