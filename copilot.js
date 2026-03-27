@@ -4,7 +4,7 @@
 // @namespace    https://github.com/Lyushen
 // @author       Lyushen
 // @license      GNU
-// @version      1.1.13
+// @version      1.1.15
 // @description  Dismisses Tips, enforces black UI text, preserves syntax highlighting in code editors, and auto-switches to the configured latest GPT model.
 // @homepageURL  https://github.com/Lyushen/TMEnchancments
 // @supportURL   https://github.com/Lyushen/TMEnchancments/issues
@@ -181,6 +181,11 @@
       animation: none !important;
     }
 
+    /* Hide "Language isn't fully supported" message bars inside code blocks */
+    .scriptor-component-code-block .fui-MessageBar {
+      display: none !important;
+    }
+
     /* UBlock Replacements */
     .undefined.reserved-space-container,
     :not(body, html):has(> * > button[aria-label="See more prompts"]),
@@ -311,6 +316,37 @@
         invokeReactAction(btn);
       }
     }
+  }
+
+  // =========================================================================
+  //   CODE BLOCK ARTIFACT CLEANUP
+  // =========================================================================
+
+  function cleanupCodeArtifacts() {
+    // Target the outermost code editor wrapping container
+    const editors = document.querySelectorAll('.scriptor-code-editor');
+    editors.forEach(editor => {
+      // Inline function to check and clean specific paragraphs
+      const checkAndClean = (paragraph) => {
+        if (!paragraph) return;
+        const textRun = paragraph.querySelector('.scriptor-textRun');
+        if (textRun) {
+          const text = textRun.textContent.trim();
+          // Matches common leftover markdown codeblock delimiters
+          if (text === '``' || text === '```') {
+            // 1. Wipe text content: prevents native DOM-based Copy buttons from reading it
+            if (textRun.textContent !== '') textRun.textContent = '';
+            // 2. Hide visually: collapses the empty space
+            if (paragraph.style.display !== 'none') paragraph.style.display = 'none';
+          }
+        }
+      };
+
+      // By exclusively checking the very first and very last line of code blocks,
+      // we guarantee we never accidentally hide actual code (e.g. template literals)
+      checkAndClean(editor.firstElementChild);
+      checkAndClean(editor.lastElementChild);
+    });
   }
 
   // =========================================================================
@@ -485,6 +521,7 @@
     setTimeout(() => {
       isThrottled = false;
       dismissAllTips();
+      cleanupCodeArtifacts(); // Trigger code artifact scrubber
       enforceGptMode();
     }, 500);
   });
@@ -493,6 +530,7 @@
     resetGptSession();
     resetSidePanelSession();
     dismissAllTips();
+    cleanupCodeArtifacts(); // Initial scrubber run
     enforceGptMode();
     appObserver.observe(document.body, { childList: true, subtree: true });
   }
@@ -505,6 +543,7 @@
       resetSidePanelSession();
       ensureStyleInjected();
       dismissAllTips();
+      cleanupCodeArtifacts(); // Scrub on navigation updates
       enforceGptMode();
     }, 200);
 
